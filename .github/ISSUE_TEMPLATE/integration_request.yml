@@ -1,0 +1,36 @@
+name: Integration Request
+description: Request support for a new framework, vector store, or LLM backend
+labels: ["enhancement", "integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Request a new framework adapter (Haystack, CrewAI, etc.), vector store backend, or LLM provider for LongParser.
+
+  - type: input
+    id: framework
+    attributes:
+      label: Framework / Library Name
+      placeholder: "e.g. Haystack, CrewAI, AutoGen, Weaviate"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Framework Version
+      placeholder: "e.g. 2.0"
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use Case
+      description: How would you use LongParser with this framework or backend?
+    validations:
+      required: true
+
+  - type: textarea
+    id: docs
+    attributes:
+      label: Relevant Documentation
+      description: Links to the framework's API or callback/event system docs.

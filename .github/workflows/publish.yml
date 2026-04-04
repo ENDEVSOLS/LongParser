@@ -1,0 +1,56 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Publish target"
+        required: true
+        default: "testpypi"
+        type: choice
+        options:
+          - testpypi
+          - pypi
+
+jobs:
+  publish:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event_name == 'release' && 'pypi' || inputs.target }}
+      url: >-
+        ${{
+          (github.event_name == 'release' || inputs.target == 'pypi')
+          && 'https://pypi.org/p/long-parser'
+          || 'https://test.pypi.org/p/long-parser'
+        }}
+    permissions:
+      id-token: write  # Trusted Publishing (no API token needed)
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Sync dev dependencies
+        run: uv sync --extra dev
+
+      - name: Run tests before publishing
+        run: uv run pytest tests/unit/ -v --tb=short
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to TestPyPI
+        if: inputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release' || inputs.target == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1

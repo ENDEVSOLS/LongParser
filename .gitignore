@@ -1,0 +1,63 @@
+# Virtual environments
+.venv/
+.testenv/
+newenv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tesseract data (large, user-local)
+tessdata/
+
+# --- RAG Specifics ---
+# Databases (ChromaDB / Vector stores)
+chroma_data/
+*.sqlite3
+
+# Large Model Files (Keep these local, don't push to GitHub)
+models/
+*.onnx
+*.pth
+*.bin
+
+# User Data & Documents (Never track customer/test uploads)
+uploads/
+test documents/
+test_documents/
+documents/
+export/
+export*/
+*.zip
+*.pdf
+
+# Legacy files
+requirements.txt
+MANIFEST.in
+
+# Security (Don't push your API keys!)
+.env
+
+# IDE / Gemini agent
+.gemini/

@@ -1,0 +1,80 @@
+services:
+  api:
+    build: .
+    container_name: cleanrag-api
+    command: [ ".venv/bin/uvicorn", "longparser.server.app:app", "--host", "0.0.0.0", "--port", "8000" ]
+    env_file: .env
+    environment:
+      - LONGPARSER_MFD_MODEL_DIR=/app/models/mfd
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+      - ./models:/app/models
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_started
+      mongo:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-fsS", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build: .
+    container_name: cleanrag-worker
+    command: [ ".venv/bin/arq", "longparser.server.worker.WorkerSettings" ]
+    env_file: .env
+    environment:
+      - LONGPARSER_MFD_MODEL_DIR=/app/models/mfd
+    volumes:
+      - uploads:/app/uploads
+      - ./models:/app/models
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_started
+      mongo:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", ".venv/bin/arq", "--check", "longparser.server.worker.WorkerSettings" ]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+
+  redis:
+    image: redis:7
+    container_name: cleanrag-redis
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  mongo:
+    image: mongo:7
+    container_name: cleanrag-mongo
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  uploads:
+  redis-data:
+  mongo-data:

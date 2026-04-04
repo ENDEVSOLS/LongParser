@@ -1,0 +1,52 @@
+# Changelog
+
+All notable changes to **LongParser** are documented here.
+
+This project follows [Semantic Versioning](https://semver.org/) and
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+---
+
+## [0.1.0] — 2026-04-04
+
+### 🎉 Initial Public Release
+
+LongParser is the open-source document intelligence engine built by ENDEVSOLS
+for production RAG pipelines.
+
+### Added
+
+- **5-stage extraction pipeline** — `Extract → Validate → HITL Review → Chunk → Embed → Index`
+- **Multi-format extraction** — PDF, DOCX, PPTX, XLSX, CSV via Docling
+- **`HybridChunker`** — token-aware, heading-hierarchy-aware, table-aware chunking
+- **Human-in-the-Loop (HITL) review** — approve / edit / reject blocks and chunks
+  via LangGraph `interrupt()` before embedding
+- **3-layer memory chat** — short-term turns + rolling summary + long-term facts,
+  powered by LCEL chains
+- **Multi-provider LLM support** — OpenAI (`gpt-4o`), Gemini (`gemini-2.0-flash`),
+  Groq (`llama-3.3-70b-versatile`), OpenRouter
+- **Multi-backend vector stores** — Chroma, FAISS, Qdrant
+- **Async-first REST API** — FastAPI + Motor (MongoDB) + ARQ (Redis job queue)
+- **`LongParserRetriever`** — drop-in LangChain `BaseRetriever` adapter
+- **`LongParserLoader`** — LangChain document loader integration
+- **`LongParserReader`** — LlamaIndex `BaseReader` integration
+- **`LongParserCallbackHandler`** — observability callbacks for LangChain chains
+- **Built-in citation validation** — chunk IDs verified against retrieved set
+  before any answer is returned
+- **Privacy-first** — all processing runs locally; no data leaves your infrastructure
+- **`py.typed` marker** — full PEP 561 typing support
+- **Unit test suite** — `test_schemas.py` (22 passing), `test_llm_chain.py`,
+  `test_chat_utils.py`
+- **GitHub Actions CI** — lint (`ruff`), tests across Python 3.10 / 3.11 / 3.12,
+  coverage reporting
+- **GitHub Actions publish** — PyPI trusted publishing triggered on GitHub releases
+- **`pyproject.toml`** with `server`, `langchain`, `llamaindex`, `embeddings`,
+  `chroma`, `faiss`, `qdrant` optional extras
+- **`Dockerfile`** and **`docker-compose.yml`** for one-command local deployment
+- **`CONTRIBUTING.md`**, **`SECURITY.md`**, **`.env.example`** — full OSS scaffolding
+
+---
+
+## [Pre-release] — 2024–2026
+
+Internal `clean-rag` development versions. Not publicly available.

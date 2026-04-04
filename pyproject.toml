@@ -1,0 +1,173 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "longparser"
+version = "0.1.0"
+description = "Privacy-first document intelligence engine — converts PDFs, DOCX, PPTX, XLSX, and CSV into AI-ready Markdown + structured JSON for RAG pipelines."
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "ENDEVSOLS Team", email = "dev@endevsols.com"},
+]
+keywords = [
+    "pdf", "document", "parsing", "ocr", "rag", "ai",
+    "docling", "chunking", "extraction", "retrieval-augmented-generation",
+    "longparser",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: General",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.0,<3",
+    "docling>=2.14",
+    "docling-core>=2.13",
+]
+
+[project.optional-dependencies]
+# PPTX support (indent-level detection via python-pptx)
+pptx = [
+    "python-pptx>=1.0",
+]
+# LangChain integration adapter
+langchain = [
+    "langchain-core>=0.2",
+]
+# LlamaIndex integration adapter
+llamaindex = [
+    "llama-index-core>=0.10",
+]
+# FastAPI REST server + MongoDB + job queue + LangChain chat engine
+server = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "python-multipart>=0.0.9",
+    "motor>=3.6",
+    "arq>=0.26",
+    "python-magic>=0.4.27",
+    "python-dotenv>=1.0",
+    "langchain>=0.3",
+    "langchain-openai>=0.3",
+    "langchain-google-genai>=2.0",
+    "langchain-groq>=0.3",
+    "langchain-mongodb>=0.3",
+    "langchain-huggingface>=0.1",
+    "langchain-chroma>=0.2",
+    "langgraph>=0.2",
+    "langgraph-checkpoint>=2.0",
+    "tiktoken>=0.7",
+    "redis>=5.0",
+]
+# Embedding engine
+embeddings = [
+    "sentence-transformers>=3.0",
+]
+# Vector databases
+chroma = [
+    "chromadb>=0.5",
+]
+faiss = [
+    "faiss-cpu>=1.8",
+]
+qdrant = [
+    "qdrant-client>=1.12",
+]
+# LaTeX equation extraction (PDF)
+latex-ocr = [
+    "pix2tex>=0.1.4",
+]
+# LaTeX equation extraction (DOCX/PPTX)
+docx-equations = [
+    "docxlatex>=0.3.0",
+    "defusedxml>=0.7.0",
+]
+# Page-level Math Formula Detection (pix2text YOLO, MIT, CPU-first)
+mfd = [
+    "pix2text>=1.1.1,<1.2",
+]
+# All optional integrations bundled
+all = [
+    "longparser[pptx]",
+    "longparser[langchain]",
+    "longparser[llamaindex]",
+    "longparser[server]",
+    "longparser[embeddings]",
+    "longparser[chroma]",
+]
+# Development / testing
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "build>=1.0",
+    "twine>=5.0",
+    "httpx>=0.27",
+    "anyio>=4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ENDEVSOLS/LongParser"
+Repository = "https://github.com/ENDEVSOLS/LongParser"
+Issues = "https://github.com/ENDEVSOLS/LongParser/issues"
+Documentation = "https://endevsols.github.io/LongParser/"
+Changelog = "https://github.com/ENDEVSOLS/LongParser/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["longparser"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+source = ["src/longparser"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 60
+
+# CPU-only PyTorch index — saves ~2.3 GB vs CUDA build
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]

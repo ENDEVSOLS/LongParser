@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Citation Guard (installed from GitHub, not copied)
+citation-guard/
+
+# Virtual environments (including nested ones like citation-guard/.venv)
+.venv/
+*/.venv/
+**/.venv/
+
+# Environment / secrets
+.env
+
+# Git
+.git/
+.github/
+
+# Caches
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Test documents (not needed at runtime)
+test documents/
+
+# Runtime data (mounted as volumes, not baked into image)
+uploads/
+models/
+chroma_data/
+mongo_data/
+documents/
+
+# Logs
+*.log
+
+# Tesseract data
+tessdata/
+
+# Misc
+*.egg
+*.tar.gz
+output*/
+.gemini/
