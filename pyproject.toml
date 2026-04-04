@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "longparser"
-version = "0.1.0"
+version = "0.1.1"
 description = "Privacy-first document intelligence engine — converts PDFs, DOCX, PPTX, XLSX, and CSV into AI-ready Markdown + structured JSON for RAG pipelines."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    {name = "ENDEVSOLS Team", email = "dev@endevsols.com"},
+    {name = "ENDEVSOLS Team", email = "technology@endevsols.com"},
 ]
 keywords = [
     "pdf", "document", "parsing", "ocr", "rag", "ai",
@@ -71,41 +71,99 @@ server = [
     "tiktoken>=0.7",
     "redis>=5.0",
 ]
-# Embedding engine
+
+# ---------------------------------------------------------------------------
+# Embedding engines
+# Pre-install torch BEFORE these extras:
+#   CPU:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   GPU:  pip install torch  (default PyPI = CUDA)
+# ---------------------------------------------------------------------------
 embeddings = [
     "sentence-transformers>=3.0",
 ]
-# Vector databases
+# Alias kept for clarity — same package, torch variant controls CPU/GPU
+embeddings-cpu = [
+    "sentence-transformers>=3.0",
+]
+embeddings-gpu = [
+    "sentence-transformers>=3.0",
+]
+
+# ---------------------------------------------------------------------------
+# Vector databases — faiss has separate CPU and GPU packages on PyPI
+# ---------------------------------------------------------------------------
 chroma = [
     "chromadb>=0.5",
 ]
-faiss = [
+faiss-cpu = [
     "faiss-cpu>=1.8",
+]
+faiss-gpu = [
+    "faiss-gpu>=1.7",
 ]
 qdrant = [
     "qdrant-client>=1.12",
 ]
-# LaTeX equation extraction (PDF)
+
+# ---------------------------------------------------------------------------
+# LaTeX / equation OCR
+# Pre-install torch (see above) before installing these extras.
+# ---------------------------------------------------------------------------
+# LaTeX OCR via pix2tex (PDF formulas)
 latex-ocr = [
     "pix2tex>=0.1.4",
 ]
-# LaTeX equation extraction (DOCX/PPTX)
+latex-ocr-cpu = [
+    "pix2tex>=0.1.4",
+]
+latex-ocr-gpu = [
+    "pix2tex>=0.1.4",
+]
+
+# LaTeX equation extraction from DOCX/PPTX (no torch needed)
 docx-equations = [
     "docxlatex>=0.3.0",
     "defusedxml>=0.7.0",
 ]
-# Page-level Math Formula Detection (pix2text YOLO, MIT, CPU-first)
+# Page-level Math Formula Detection via pix2text YOLO (MIT licence)
 mfd = [
     "pix2text>=1.1.1,<1.2",
 ]
-# All optional integrations bundled
-all = [
+
+# ---------------------------------------------------------------------------
+# Convenience meta-extras
+# Usage:
+#   CPU-only (no CUDA):
+#     pip install torch --index-url https://download.pytorch.org/whl/cpu
+#     pip install "longparser[cpu]"
+#
+#   GPU / CUDA:
+#     pip install torch          # default PyPI wheel = CUDA
+#     pip install "longparser[gpu]"
+# ---------------------------------------------------------------------------
+cpu = [
+    "longparser[server]",
+    "longparser[embeddings-cpu]",
+    "longparser[faiss-cpu]",
+    "longparser[latex-ocr-cpu]",
+    "longparser[chroma]",
     "longparser[pptx]",
     "longparser[langchain]",
     "longparser[llamaindex]",
+]
+gpu = [
     "longparser[server]",
-    "longparser[embeddings]",
+    "longparser[embeddings-gpu]",
+    "longparser[faiss-gpu]",
+    "longparser[latex-ocr-gpu]",
     "longparser[chroma]",
+    "longparser[pptx]",
+    "longparser[langchain]",
+    "longparser[llamaindex]",
+]
+# Legacy / catch-all (defaults to CPU-safe)
+all = [
+    "longparser[cpu]",
 ]
 # Development / testing
 dev = [
@@ -119,6 +177,7 @@ dev = [
     "httpx>=0.27",
     "anyio>=4.0",
 ]
+
 
 [project.urls]
 Homepage = "https://github.com/ENDEVSOLS/LongParser"

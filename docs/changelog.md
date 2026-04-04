@@ -5,9 +5,30 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] — 2026-04-04
+
+### Added
+
+- **CPU / GPU install separation** — dedicated `[cpu]` and `[gpu]` meta-extras for clean one-command installs
+- **`faiss-gpu`** extra (`faiss-gpu>=1.7`) as a distinct option from `faiss-cpu`
+- **Granular torch-based extras** — `embeddings-cpu`, `embeddings-gpu`, `latex-ocr-cpu`, `latex-ocr-gpu` for fine-grained dependency control
+
+### Fixed
+
+- Package metadata: license field updated to SPDX expression format per PEP 639
+- Documentation site build reliability improvements
+
+### Changed
+
+- `[gpu]` is now the recommended default install — one command, works on both GPU and CPU machines
+- `[cpu]` documented as the advanced path for size-constrained environments (Docker, edge, CI)
+- `[all]` now resolves to `[cpu]` as a safe, dependency-minimal default
+
 ---
 
+
 ## [0.1.0] — 2026-04-04
+
 
 ### 🎉 Initial Public Release
 

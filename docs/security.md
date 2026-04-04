@@ -11,7 +11,7 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Email security reports to: **security@endevsols.com**
+Email security reports to: **technology@endevsols.com**
 
 Include:
 - Description of the vulnerability

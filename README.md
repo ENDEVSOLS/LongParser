@@ -52,25 +52,53 @@
 
 ## Installation
 
-### Core (SDK only — no API server)
+### Quick install (recommended)
+
+```bash
+pip install "longparser[gpu]"
+```
+
+Includes everything — server, embeddings, vector DB, OCR, LangChain, LlamaIndex.
+Works on CPU machines too; torch just runs in CPU mode automatically.
+
+### Core SDK only (no server, no torch)
 
 ```bash
 pip install longparser
 ```
 
-### With REST API server (FastAPI + MongoDB + LLM)
+### Pick only what you need
+
+| Extra | What it adds |
+|---|---|
+| `server` | FastAPI + MongoDB + Redis + LangChain chat |
+| `embeddings-gpu` | `sentence-transformers` (GPU) |
+| `embeddings-cpu` | `sentence-transformers` (CPU-only torch) |
+| `faiss-gpu` | FAISS GPU vector store |
+| `faiss-cpu` | FAISS CPU vector store |
+| `chroma` | ChromaDB |
+| `qdrant` | Qdrant |
+| `latex-ocr-gpu` | `pix2tex` equation OCR (GPU) |
+| `latex-ocr-cpu` | `pix2tex` equation OCR (CPU) |
+| `langchain` | LangChain core adapter |
+| `llamaindex` | LlamaIndex reader adapter |
+| `gpu` | **All of the above** — one command |
+| `cpu` | **All of the above** — CPU-only torch |
+
+### Advanced: CPU-only install (save ~1.8 GB)
+
+For Docker images, edge devices, or CI environments where CUDA isn't needed:
 
 ```bash
-pip install "longparser[server]"
-```
+# Step 1 — CPU torch (~230 MB vs ~2 GB for CUDA)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-### All extras
-
-```bash
-pip install "longparser[all]"
+# Step 2 — LongParser CPU bundle
+pip install "longparser[cpu]"
 ```
 
 ---
+
 
 ## Quick Start
 

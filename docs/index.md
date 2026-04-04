@@ -80,34 +80,18 @@ graph LR
 
 ---
 
-## Installation Options
+## Installation
 
-=== "Core (PDF parsing only)"
-    ```bash
-    pip install longparser
-    ```
+```bash
+# Recommended — everything included (GPU/CPU both work)
+pip install "longparser[gpu]"
 
-=== "With REST Server"
-    ```bash
-    pip install "longparser[server]"
-    ```
+# Core SDK only — minimal, no server
+pip install longparser
+```
 
-=== "With LangChain"
-    ```bash
-    pip install "longparser[langchain]"
-    ```
+→ [Full installation guide](getting-started/installation.md) — CPU-only, Docker, extras reference
 
-=== "With LlamaIndex"
-    ```bash
-    pip install "longparser[llamaindex]"
-    ```
-
-=== "All extras"
-    ```bash
-    pip install "longparser[server,langchain,llamaindex]"
-    ```
-
----
 
 ## Next Steps
 
