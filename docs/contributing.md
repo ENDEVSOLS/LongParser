@@ -111,4 +111,4 @@ Include the Python version, LongParser version, and a minimal reproducer.
 
 ## Security Vulnerabilities
 
-See [SECURITY.md](SECURITY.md).
+See [SECURITY.md](security.md).

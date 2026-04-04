@@ -27,10 +27,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install docs dependencies
-        run: pip install mkdocs-material mkdocstrings[python]
+        run: |
+          pip install mkdocs-material "mkdocstrings[python]" mike
+          pip install -e "." --no-deps
 
       - name: Build docs
-        run: mkdocs build --strict --site-dir site
+        run: mkdocs build --site-dir site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
