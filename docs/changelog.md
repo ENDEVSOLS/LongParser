@@ -5,6 +5,16 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] — 2026-04-05
+
+### Changed
+
+- Project logo added to documentation site, README, and PyPI page
+- Documentation site header updated — logo replaces text title
+- Installation guide restructured for clarity
+
+---
+
 ## [0.1.1] — 2026-04-04
 
 ### Added

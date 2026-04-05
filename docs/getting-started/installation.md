@@ -104,5 +104,5 @@ The server starts on `http://localhost:8000`.
 
 ```python
 import longparser
-print(longparser.__version__)  # 0.1.1
+print(longparser.__version__)  # 0.1.2
 ```

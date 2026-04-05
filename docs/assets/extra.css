@@ -1,9 +1,6 @@
-/* Hide the site name text next to the logo — logo already contains the name */
-.md-header__title {
-  display: none !important;
-}
-
-/* Also hide in the breadcrumb / nav title area */
-.md-ellipsis {
+/* Hide ONLY the site name text in the top header bar.
+   The logo already contains the name — no need to show it twice.
+   We target the header topic specifically to avoid hiding sidebar nav text. */
+.md-header__topic:first-child {
   display: none !important;
 }
