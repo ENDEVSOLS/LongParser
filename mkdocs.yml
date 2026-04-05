@@ -39,6 +39,9 @@ theme:
 plugins:
   - search
 
+extra_css:
+  - assets/extra.css
+
 markdown_extensions:
   - admonition
   - pymdownx.highlight:

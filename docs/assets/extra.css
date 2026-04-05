@@ -1,0 +1,9 @@
+/* Hide the site name text next to the logo — logo already contains the name */
+.md-header__title {
+  display: none !important;
+}
+
+/* Also hide in the breadcrumb / nav title area */
+.md-ellipsis {
+  display: none !important;
+}
