@@ -161,7 +161,7 @@ X-API-Key: your-key
   "require_approval": false,
   "config": {
     "llm_provider": "openai",
-    "llm_model": "gpt-4o",
+    "llm_model": "gpt-5.3",
     "top_k": 5
   }
 }

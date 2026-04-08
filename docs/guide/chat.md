@@ -40,7 +40,7 @@ POST /chat
   "question": "What are the key findings?",
   "config": {
     "llm_provider": "openai",
-    "llm_model": "gpt-4o",
+    "llm_model": "gpt-5.3",
     "top_k": 5
   }
 }

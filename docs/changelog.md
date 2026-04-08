@@ -54,7 +54,7 @@ for production RAG pipelines.
   via LangGraph `interrupt()` before embedding
 - **3-layer memory chat** — short-term turns + rolling summary + long-term facts,
   powered by LCEL chains
-- **Multi-provider LLM support** — OpenAI (`gpt-4o`), Gemini (`gemini-2.0-flash`),
+- **Multi-provider LLM support** — OpenAI (`gpt-5.3`), Gemini (`gemini-2.5`),
   Groq (`llama-3.3-70b-versatile`), OpenRouter
 - **Multi-backend vector stores** — Chroma, FAISS, Qdrant
 - **Async-first REST API** — FastAPI + Motor (MongoDB) + ARQ (Redis job queue)

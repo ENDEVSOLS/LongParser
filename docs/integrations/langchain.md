@@ -59,7 +59,7 @@ from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI
 
 qa = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(model="gpt-4o"),
+    llm=ChatOpenAI(model="gpt-5.3"),
     retriever=vectorstore.as_retriever(search_kwargs={"k": 5}),
 )
 
