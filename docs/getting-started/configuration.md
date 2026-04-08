@@ -15,7 +15,7 @@ cp .env.example .env
 | Variable | Description |
 |---|---|
 | `LONGPARSER_API_KEY` | API key for the REST server |
-| `LONGPARSER_MONGO_URI` | MongoDB connection string |
+| `LONGPARSER_MONGO_URL` | MongoDB connection string |
 | `OPENAI_API_KEY` | For OpenAI LLM provider |
 
 ## Processing Options

@@ -1,11 +1,14 @@
 services:
   api:
     build: .
-    container_name: cleanrag-api
+    container_name: longparser-api
     command: [ ".venv/bin/uvicorn", "longparser.server.app:app", "--host", "0.0.0.0", "--port", "8000" ]
     env_file: .env
     environment:
       - LONGPARSER_MFD_MODEL_DIR=/app/models/mfd
+      # ── For Docker networking, override the localhost URLs from .env ──
+      - LONGPARSER_MONGO_URL=mongodb://${MONGO_USER:-longparser}:${MONGO_PASS:-longparser}@mongo:27017/longparser?authSource=admin
+      - LONGPARSER_REDIS_URL=redis://:${REDIS_PASS:-longparser}@redis:6379
     ports:
       - "8000:8000"
     volumes:
@@ -27,11 +30,13 @@ services:
 
   worker:
     build: .
-    container_name: cleanrag-worker
+    container_name: longparser-worker
     command: [ ".venv/bin/arq", "longparser.server.worker.WorkerSettings" ]
     env_file: .env
     environment:
       - LONGPARSER_MFD_MODEL_DIR=/app/models/mfd
+      - LONGPARSER_MONGO_URL=mongodb://${MONGO_USER:-longparser}:${MONGO_PASS:-longparser}@mongo:27017/longparser?authSource=admin
+      - LONGPARSER_REDIS_URL=redis://:${REDIS_PASS:-longparser}@redis:6379
     volumes:
       - uploads:/app/uploads
       - ./models:/app/models
@@ -51,25 +56,28 @@ services:
 
   redis:
     image: redis:7
-    container_name: cleanrag-redis
-    command: [ "redis-server", "--appendonly", "yes" ]
+    container_name: longparser-redis
+    command: [ "redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASS:-longparser}" ]
     volumes:
       - redis-data:/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASS:-longparser}", "ping" ]
       interval: 30s
       timeout: 5s
       retries: 3
 
   mongo:
     image: mongo:7
-    container_name: cleanrag-mongo
+    container_name: longparser-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-longparser}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-longparser}
     volumes:
       - mongo-data:/data/db
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok" ]
+      test: [ "CMD", "mongosh", "-u", "${MONGO_USER:-longparser}", "-p", "${MONGO_PASS:-longparser}", "--authenticationDatabase", "admin", "--quiet", "--eval", "db.adminCommand('ping').ok" ]
       interval: 30s
       timeout: 5s
       retries: 3

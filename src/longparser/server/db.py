@@ -411,7 +411,7 @@ class Database:
                 ]},
             },
             {"_id": 0},
-        ).to_list(length=None)
+        ).to_list(length=10000)  # Cap: embedding batches
 
     # -----------------------------------------------------------------------
     # Index versions
@@ -450,7 +450,7 @@ class Database:
         """List all index versions for a job (for cleanup on delete)."""
         return await self.index_versions.find(
             {"tenant_id": tenant_id, "job_id": job_id}, {"_id": 0}
-        ).to_list(length=None)
+        ).to_list(length=100)  # Cap: index versions per job
 
     # -----------------------------------------------------------------------
     # Chat Sessions
@@ -597,7 +597,7 @@ class Database:
             {"tenant_id": tenant_id, "session_id": session_id},
             {"_id": 0},
         ).sort("created_at", 1)
-        return await cursor.to_list(length=None)
+        return await cursor.to_list(length=5000)  # Cap: session history
 
     async def get_unarchived_turns(
         self, tenant_id: str, session_id: str
@@ -611,7 +611,7 @@ class Database:
             },
             {"_id": 0},
         ).sort("created_at", 1)
-        return await cursor.to_list(length=None)
+        return await cursor.to_list(length=5000)  # Cap: summarization batch
 
     async def archive_turns(
         self, tenant_id: str, session_id: str, turn_ids: list[str]
@@ -645,7 +645,7 @@ class Database:
             {"deleted_at": {"$lte": cutoff}},
             {"session_id": 1, "tenant_id": 1, "_id": 0},
         )
-        return await cursor.to_list(length=None)
+        return await cursor.to_list(length=1000)  # Cap: purge batch
 
     # -----------------------------------------------------------------------
     # Lifecycle

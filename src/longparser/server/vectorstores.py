@@ -64,7 +64,7 @@ class ChromaStore(BaseVectorStore):
             import chromadb
         except ImportError:
             raise ImportError(
-                "chromadb is required. Install: pip install clean_rag[chroma]"
+                "chromadb is required. Install: pip install longparser[chroma]"
             )
 
         # Securely isolate vector spaces based on model config
@@ -125,8 +125,8 @@ class ChromaStore(BaseVectorStore):
                     if isinstance(v, str) and v.startswith("["):
                         try:
                             meta[k] = json.loads(v)
-                        except (json.JSONDecodeError, ValueError):
-                            pass
+                        except (json.JSONDecodeError, ValueError) as e:
+                            logger.debug(f"Failed to decode JSON list from Chroma metadata: {e}")
                 output.append({
                     "id": vid,
                     "score": 1.0 - (results["distances"][0][i] if results["distances"] else 0),
@@ -165,7 +165,7 @@ class FAISSStore(BaseVectorStore):
             import faiss  # noqa: F401
         except ImportError:
             raise ImportError(
-                "faiss-cpu is required. Install: pip install clean_rag[faiss]"
+                "faiss-cpu is required. Install: pip install longparser[faiss-cpu]"
             )
 
         self.base_dir = Path(base_dir)
@@ -297,7 +297,7 @@ class QdrantStore(BaseVectorStore):
             from qdrant_client.models import Distance, VectorParams
         except ImportError:
             raise ImportError(
-                "qdrant-client is required. Install: pip install clean_rag[qdrant]"
+                "qdrant-client is required. Install: pip install longparser[qdrant]"
             )
 
         self.client = QdrantClient(url=url)
@@ -319,7 +319,7 @@ class QdrantStore(BaseVectorStore):
             if existing_dim != dim:
                 # Mismatch — create new collection with hash suffix
                 import hashlib
-                suffix = hashlib.md5(f"{dim}".encode()).hexdigest()[:8]
+                suffix = hashlib.sha256(f"{dim}".encode()).hexdigest()[:8]
                 self.collection_name = f"{self.collection_name}_{suffix}"
                 logger.warning(
                     f"QdrantStore: dim mismatch, using collection: {self.collection_name}"
@@ -382,8 +382,8 @@ class QdrantStore(BaseVectorStore):
                 if isinstance(v, str) and v.startswith("["):
                     try:
                         payload[k] = json.loads(v)
-                    except (json.JSONDecodeError, ValueError):
-                        pass
+                    except (json.JSONDecodeError, ValueError) as e:
+                        logger.debug(f"Failed to decode JSON list from Qdrant metadata: {e}")
             output.append({
                 "id": payload.get("vector_id", ""),
                 "score": hit.score,

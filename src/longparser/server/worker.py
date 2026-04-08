@@ -258,8 +258,8 @@ async def summarize_session(ctx: dict, tenant_id: str, session_id: str) -> dict:
       4. Archive summarized turns
     """
     from .db import Database
-    from .schemas import ChatConfig
-    from .llm_chain import get_plain_chat_model
+    from .chat.schemas import ChatConfig
+    from .chat.llm_chain import get_plain_chat_model
     from langchain_core.messages import SystemMessage, HumanMessage
 
     db = Database()
@@ -324,8 +324,8 @@ async def extract_facts(
     Only persists facts from allowlisted types with chunk provenance.
     """
     from .db import Database
-    from .schemas import ChatConfig, FactSourceType
-    from .llm_chain import get_chat_model
+    from .chat.schemas import ChatConfig, FactSourceType
+    from .chat.llm_chain import get_chat_model
     from langchain_core.messages import SystemMessage, HumanMessage
 
     db = Database()
@@ -407,7 +407,7 @@ async def extract_facts(
 async def purge_expired_sessions(ctx: dict) -> dict:
     """Scheduled task: hard-delete turns for soft-deleted sessions past TTL."""
     from .db import Database
-    from .schemas import ChatConfig
+    from .chat.schemas import ChatConfig
 
     db = Database()
     config = ChatConfig()

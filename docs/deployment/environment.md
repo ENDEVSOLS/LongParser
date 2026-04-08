@@ -7,7 +7,7 @@ Copy `.env.example` to `.env` and configure for your deployment.
 | Variable | Description |
 |---|---|
 | `LONGPARSER_API_KEY` | API key for server authentication |
-| `LONGPARSER_MONGO_URI` | MongoDB connection string |
+| `LONGPARSER_MONGO_URL` | MongoDB connection string |
 
 ## LLM
 
@@ -50,3 +50,11 @@ Copy `.env.example` to `.env` and configure for your deployment.
 |---|---|---|
 | `LONGPARSER_REDIS_URL` | `redis://localhost:6379/0` | Redis URL for task queue |
 | `LONGPARSER_WORKER_CONCURRENCY` | `2` | Worker concurrency level |
+
+## Security
+
+| Variable | Default | Description |
+|---|---|---|
+| `LONGPARSER_CORS_ORIGINS` | `*` | Allowed CORS origins (comma separated) |
+| `LONGPARSER_RATE_LIMIT` | `60` | Max requests per minute per tenant ID |
+| `LONGPARSER_ADMIN_KEYS` | — | Comma-separated admin API keys |

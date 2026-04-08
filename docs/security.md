@@ -35,6 +35,8 @@ Key risks:
 | **MongoDB injection** | Motor driver + typed Pydantic inputs prevent injection |
 | **SSRF via webhook** | No outbound HTTP made based on user input |
 | **Hallucinated citations** | Citation IDs validated against retrieved set before returning to client |
+| **DDoS / Spam via API** | Route-level Rate Limiting strictly isolated per tenant via Redis |
+| **Cross-Origin attacks** | Configurable CORS restrictions and strict Tenant Isolation |
 
 ## Dependency Security
 
