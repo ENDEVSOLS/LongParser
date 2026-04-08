@@ -16,13 +16,15 @@ from .schemas import ChatConfig
 logger = logging.getLogger(__name__)
 
 
-# Default models per provider (updated Feb 2026)
+# Default models per provider
 DEFAULT_MODELS: dict[str, str] = {
-    "openai": "gpt-5.3-codex",
+    "openai": "gpt-5.3",
     "gemini": "gemini-2.5-flash",
     "groq": "openai/gpt-oss-120b",
-    "openrouter": "openai/gpt-5.3-codex",
+    "openrouter": "openai/gpt-5.3",
 }
+
+SUPPORTED_PROVIDERS = list(DEFAULT_MODELS.keys())
 
 
 def _create_openai(model: str, temperature: float, max_tokens: int,

@@ -13,6 +13,7 @@ try:
 except ImportError:
     pass
 
+from collections import defaultdict
 import hashlib
 import io
 import logging
@@ -25,6 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import time as _time
+import redis.asyncio as redis
 
 from fastapi import (
     FastAPI,
@@ -35,6 +37,7 @@ from fastapi import (
     Request,
     UploadFile,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .db import Database
@@ -56,6 +59,15 @@ from .schemas import (
     SearchRequest,
     SearchResponse,
     SearchResult,
+)
+from .chat.schemas import (
+    ChatConfig,
+    ChatRequest,
+    ChatResponse,
+    CreateSessionRequest,
+    HITLResumeRequest,
+    LLMAnswer,
+    SourceRef,
 )
 
 logger = logging.getLogger(__name__)
@@ -92,8 +104,18 @@ queue = ARQBackend(
 async def lifespan(app: FastAPI):
     """Startup/shutdown hooks."""
     await db.create_indexes()
+    
+    from .chat.checkpointer import init_checkpointer, close_checkpointer
+    await init_checkpointer(
+        mongo_uri=os.getenv("LONGPARSER_MONGO_URL", "mongodb://localhost:27017"),
+        db_name=os.getenv("LONGPARSER_DB_NAME", "longparser"),
+    )
+    
     logger.info("LongParser API started")
     yield
+    
+    await close_checkpointer()
+    
     await queue.close()
     await db.close()
     if hasattr(app.state, "chat_engine"):
@@ -104,8 +126,66 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LongParser API",
     description="Document intelligence engine with HITL review, embedding, and vector search.",
-    version="0.3.0",
+    version=__import__("longparser").__version__,
     lifespan=lifespan,
+)
+
+
+# ---------------------------------------------------------------------------
+# CORS middleware
+# ---------------------------------------------------------------------------
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("LONGPARSER_CORS_ORIGINS", "*").split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Global exception handler
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions — return sanitized error, log full trace."""
+    logger.exception("Unhandled exception", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter (Redis sliding window)
+# ---------------------------------------------------------------------------
+
+class RedisRateLimiter:
+    """Redis-backed sliding-window rate limiter (per-tenant) for multi-worker scale."""
+
+    def __init__(self, redis_url: str, max_requests: int = 60, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window = window_seconds
+        self.redis = redis.from_url(redis_url)
+
+    async def check(self, key: str) -> bool:
+        now = _time.time()
+        redis_key = f"rate_limit:{key}"
+        pipeline = self.redis.pipeline()
+        pipeline.zremrangebyscore(redis_key, 0, now - self.window)
+        pipeline.zadd(redis_key, {str(now): now})
+        pipeline.zcard(redis_key)
+        pipeline.expire(redis_key, self.window)
+        results = await pipeline.execute()
+        return results[2] <= self.max_requests
+
+
+_rate_limiter = RedisRateLimiter(
+    redis_url=os.getenv("LONGPARSER_REDIS_URL", "redis://localhost:6379/0"),
+    max_requests=int(os.getenv("LONGPARSER_RATE_LIMIT", "60")),
+    window_seconds=60,
 )
 
 
@@ -121,8 +201,33 @@ def _get_tenant(x_api_key: str = Header(...)) -> str:
     """
     if not x_api_key or len(x_api_key) < 8:
         raise HTTPException(status_code=401, detail="Invalid API key")
-    # For v1, use a hash of the key as tenant_id
-    return hashlib.sha256(x_api_key.encode()).hexdigest()[:16]
+    # Use 32 hex chars (128-bit) to resist brute-force collision attacks
+    return hashlib.sha256(x_api_key.encode()).hexdigest()[:32]
+
+
+# ---------------------------------------------------------------------------
+# RBAC (role-based access control)
+# ---------------------------------------------------------------------------
+
+_ADMIN_KEYS: set[str] = set(
+    k.strip() for k in os.getenv("LONGPARSER_ADMIN_KEYS", "").split(",") if k.strip()
+)
+
+
+def _get_role(x_api_key: str) -> str:
+    """Resolve user role from API key.
+
+    If LONGPARSER_ADMIN_KEYS is not set, all users are admins (backward compatible).
+    """
+    if not _ADMIN_KEYS:
+        return "admin"
+    return "admin" if x_api_key in _ADMIN_KEYS else "reviewer"
+
+
+def _require_admin(x_api_key: str) -> None:
+    """Raise 403 if the API key does not have admin role."""
+    if _get_role(x_api_key) != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
 
 
 # ---------------------------------------------------------------------------
@@ -175,14 +280,23 @@ async def create_job(
 
     # Generate job ID and save file
     job_id = str(uuid.uuid4())
-    dest = UPLOAD_DIR / tenant_id / job_id / (file.filename or "document")
+
+    # --- Path Traversal Protection ---
+    # Strip all directory components from the user-provided filename
+    # to prevent payloads like "../../../etc/passwd" from escaping UPLOAD_DIR.
+    raw_name = file.filename or "document"
+    safe_name = Path(raw_name).name  # keeps only the final component
+    if not safe_name or safe_name in (".", ".."):
+        safe_name = "document"
+
+    dest = UPLOAD_DIR / tenant_id / job_id / safe_name
     file_hash, file_size = await _stream_upload(file, dest)
 
     # Create job in MongoDB
     job_doc = await db.create_job(
         tenant_id=tenant_id,
         job_id=job_id,
-        source_file=file.filename or "document",
+        source_file=safe_name,
         file_hash=file_hash,
     )
 
@@ -197,7 +311,7 @@ async def create_job(
         job_id=job_id,
         tenant_id=tenant_id,
         status=JobStatus.QUEUED,
-        source_file=file.filename or "document",
+        source_file=safe_name,
         file_hash=file_hash,
         created_at=job_doc["created_at"],
     )
@@ -498,6 +612,7 @@ async def purge_block(
     x_api_key: str = Header(...),
 ):
     """Admin-only: permanently delete a block. Writes a tombstone revision."""
+    _require_admin(x_api_key)
     tenant_id = _get_tenant(x_api_key)
 
     # Get block before deletion (for tombstone)
@@ -545,6 +660,7 @@ async def purge_chunk(
     x_api_key: str = Header(...),
 ):
     """Admin-only: permanently delete a chunk. Writes a tombstone revision."""
+    _require_admin(x_api_key)
     tenant_id = _get_tenant(x_api_key)
 
     # Get chunk before deletion
@@ -852,8 +968,19 @@ async def search(body: SearchRequest, x_api_key: str = Header(...)):
 
 @app.middleware("http")
 async def observability_middleware(request: Request, call_next):
-    """Attach request_id and log structured request data."""
+    """Attach request_id, enforce rate limits, and log structured request data."""
     request_id = str(uuid.uuid4())[:8]
+
+    # ── Rate limiting (skip unauthenticated endpoints) ──
+    api_key = request.headers.get("x-api-key")
+    if api_key and len(api_key) >= 8:
+        tenant_key = hashlib.sha256(api_key.encode()).hexdigest()[:32]
+        if not await _rate_limiter.check(tenant_key):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Try again later."},
+            )
+
     start = _time.monotonic()
     response = await call_next(request)
     latency_ms = (_time.monotonic() - start) * 1000
@@ -876,12 +1003,10 @@ async def observability_middleware(request: Request, call_next):
 
 @app.post("/chat/sessions", status_code=201)
 async def create_chat_session(
-    body: dict,
+    req: CreateSessionRequest,
     x_api_key: str = Header(...),
 ):
     """Create a new chat session (server-generated session_id)."""
-    from .chat.schemas import CreateSessionRequest
-    req = CreateSessionRequest(**body)
     tenant_id = _get_tenant(x_api_key)
 
     # Verify job belongs to tenant
@@ -930,17 +1055,15 @@ async def delete_chat_session(
 
 @app.post("/chat")
 async def chat(
-    body: dict,
+    req: ChatRequest,
     x_api_key: str = Header(...),
 ):
     """Ask a question — RAG chatbot with 3-layer memory.
 
     Set require_approval=true for Human-in-the-Loop review.
     """
-    from .chat.schemas import ChatRequest, ChatResponse, ChatConfig
     from .chat.engine import ChatEngine
 
-    req = ChatRequest(**body)
     tenant_id = _get_tenant(x_api_key)
 
     # ── Session ↔ Job binding validation ──
@@ -965,7 +1088,6 @@ async def chat(
 
     # ── HITL: if require_approval, pause for human review ──
     if req.require_approval and response.status == "complete":
-        from .chat.schemas import LLMAnswer, SourceRef
         from .chat.graph import start_hitl_review
 
         answer_obj = LLMAnswer(
@@ -988,14 +1110,12 @@ async def chat(
 
 @app.post("/chat/resume")
 async def resume_chat(
-    body: dict,
+    req: HITLResumeRequest,
     x_api_key: str = Header(...),
 ):
     """Resume a paused HITL chat with human decision (approve/edit/reject)."""
-    from .chat.schemas import HITLResumeRequest, ChatResponse, SourceRef, Turn
     from .chat.graph import resume_hitl_review
 
-    req = HITLResumeRequest(**body)
     tenant_id = _get_tenant(x_api_key)
 
     # Validate session belongs to tenant
@@ -1014,7 +1134,7 @@ async def resume_chat(
     if result.get("status") == "complete":
         # Update the last turn's answer if edited
         if req.action == "edit" and req.edited_answer:
-            await db.chat_turns.update_one(
+            await db.chat_turns.find_one_and_update(
                 {
                     "tenant_id": tenant_id,
                     "session_id": req.session_id,
@@ -1041,5 +1161,5 @@ async def resume_chat(
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "ok", "service": "cleanrag-api"}
+    return {"status": "ok", "service": "longparser-api"}
 

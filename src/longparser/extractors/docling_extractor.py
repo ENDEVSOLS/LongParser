@@ -254,7 +254,7 @@ class DoclingExtractor(BaseExtractor):
                         # Order-based substitution with alignment gate
                         injected = 0
                         _non_omml = 0
-                        for block, latex in zip(formula_blocks, latex_eqs):
+                        for block, latex in zip(formula_blocks, latex_eqs, strict=False):
                             orig_len = len(block.text.strip()) if block.text else 0
                             latex_len = len(latex.strip())
                             
@@ -431,7 +431,8 @@ class DoclingExtractor(BaseExtractor):
                     page_img = None
                     try:
                         page_img = page_obj.image.pil_image
-                    except Exception:
+                    except Exception as e:
+                        logger.warning("Failed to extract image for formula scanning: %s", e)
                         continue
                     if page_img is None:
                         continue
@@ -527,8 +528,8 @@ class DoclingExtractor(BaseExtractor):
                                     # Update label to formula so downstream sees it correctly
                                     try:
                                         item.label = type(item.label)("formula")
-                                    except Exception:
-                                        pass
+                                    except Exception as e:
+                                        logger.debug(f"Failed to update formula label: {e}")
                                     replaced = True
                                     logger.debug(f"MFD: replaced garbled block on page {page_no}")
                                     break
@@ -1023,15 +1024,15 @@ class DoclingExtractor(BaseExtractor):
         if isinstance(item, TableItem) and hasattr(item, 'export_to_markdown'):
             try:
                 return item.export_to_markdown(doc=docling_doc)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to export table item to markdown: {e}")
         if hasattr(item, 'text') and item.text:
             return item.text
         if hasattr(item, 'export_to_markdown'):
             try:
                 return item.export_to_markdown()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to export item to markdown: {e}")
         return ""
 
     def _get_item_confidence(self, item) -> float:
@@ -1080,10 +1081,10 @@ class DoclingExtractor(BaseExtractor):
                                 if s.placeholder_format.type == PP_PH.SUBTITLE:
                                     has_subtitle_placeholder = True
                                     break
-                            except Exception:
-                                pass
-                except ImportError:
-                    pass
+                            except Exception as e:
+                                logger.debug(f"Failed to check PPTX subtitle placeholder format: {e}")
+                except ImportError as e:
+                    logger.debug(f"Failed to import python-pptx: {e}")
             
             for shape in slide.shapes:
                 found_title = self._extract_pptx_shape_info(
@@ -1160,8 +1161,8 @@ class DoclingExtractor(BaseExtractor):
                     is_subtitle_shape = True
                 elif ph_type in (PP_PLACEHOLDER.DATE, PP_PLACEHOLDER.FOOTER, PP_PLACEHOLDER.SLIDE_NUMBER):
                     is_footer_shape = True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to check PPTX placeholder format type: {e}")
         
         # Skip footer/date/slide-number shapes entirely
         if is_footer_shape:
@@ -1267,7 +1268,7 @@ class DoclingExtractor(BaseExtractor):
         
         # Calculate file hash
         with open(file_path, "rb") as f:
-            file_hash = hashlib.md5(f.read()).hexdigest()
+            file_hash = hashlib.sha256(f.read()).hexdigest()
         
         # Get conversion result (cached or new)
         result = self._run_docling(file_path, config)

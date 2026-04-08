@@ -345,10 +345,10 @@ def _generate_schema_chunk(
         sample_rows.append(f"  Row {r_idx}: " + "; ".join(parts))
     
     lines = [
-        f"[TABLE SCHEMA]",
+        "[TABLE SCHEMA]",
         f"Table ID: {block.block_id}",
         f"Rows: {n_data} (data rows), Columns: {n_cols}",
-        f"Columns:",
+        "Columns:",
     ]
     lines.extend(col_profiles)
     lines.append(f"Sample Rows ({sample_count}):")

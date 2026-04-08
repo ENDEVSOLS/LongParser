@@ -17,16 +17,14 @@ import logging
 import uuid
 from typing import TypedDict, Optional, Any
 
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.types import interrupt, Command
 
 from .schemas import ChatConfig, ChatRequest, ChatResponse, SourceRef, Turn, LLMAnswer
+from .checkpointer import get_checkpointer
 
 logger = logging.getLogger(__name__)
 
-# Shared checkpointer for all HITL flows
-_checkpointer = InMemorySaver()
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +101,7 @@ async def process_decision(state: HITLState) -> HITLState:
 # Build Graph
 # ---------------------------------------------------------------------------
 
-def build_hitl_graph() -> Any:
+def build_hitl_graph(checkpointer) -> Any:
     """Build and compile the HITL state graph."""
     graph = StateGraph(HITLState)
 
@@ -116,11 +114,7 @@ def build_hitl_graph() -> Any:
     graph.add_edge("review", "decide")
     graph.add_edge("decide", END)
 
-    return graph.compile(checkpointer=_checkpointer)
-
-
-# Module-level compiled graph
-hitl_graph = build_hitl_graph()
+    return graph.compile(checkpointer=checkpointer)
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +146,10 @@ async def start_hitl_review(
     }
 
     config = {"configurable": {"thread_id": thread_id}}
+    
+    checkpointer = get_checkpointer()
+    hitl_graph = build_hitl_graph(checkpointer)
+    
     _result = await hitl_graph.ainvoke(initial_state, config=config)
 
     return {
@@ -169,6 +167,9 @@ async def resume_hitl_review(
 ) -> HITLState:
     """Resume a paused HITL flow with the human's decision."""
     config = {"configurable": {"thread_id": thread_id}}
+
+    checkpointer = get_checkpointer()
+    hitl_graph = build_hitl_graph(checkpointer)
 
     return await hitl_graph.ainvoke(
         Command(resume={"action": action, "edited_answer": edited_answer}),

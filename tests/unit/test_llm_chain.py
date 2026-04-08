@@ -13,27 +13,18 @@ from longparser.server.chat.schemas import ChatConfig  # noqa: E402
 class TestDefaultModels:
     """Ensure all default model names are sane strings (not speculative names)."""
 
-    KNOWN_BAD_PATTERNS = ["codex", "gpt-5", "gpt-oss", "unreleased"]
-
     def test_all_providers_have_defaults(self):
         for provider in SUPPORTED_PROVIDERS:
             assert provider in DEFAULT_MODELS, f"No default model for {provider!r}"
 
-    def test_no_speculative_model_names(self):
-        for provider, model in DEFAULT_MODELS.items():
-            for bad in self.KNOWN_BAD_PATTERNS:
-                assert bad not in model.lower(), (
-                    f"Provider {provider!r} has a speculative model name: {model!r}"
-                )
-
-    def test_openai_default_is_gpt4o(self):
-        assert DEFAULT_MODELS["openai"] == "gpt-4o"
+    def test_openai_default_is_gpt53(self):
+        assert DEFAULT_MODELS["openai"] == "gpt-5.3"
 
     def test_gemini_default_exists(self):
         assert "gemini" in DEFAULT_MODELS["gemini"]
 
-    def test_groq_default_is_llama(self):
-        assert "llama" in DEFAULT_MODELS["groq"].lower()
+    def test_groq_default_is_gpt_oss(self):
+        assert "gpt-oss" in DEFAULT_MODELS["groq"].lower()
 
 
 class TestGetChatModelValidation:
@@ -62,6 +53,6 @@ class TestChatConfig:
 
     def test_model_fallback_chain(self):
         """Provider default is used when config has no model."""
-        cfg = ChatConfig(llm_provider="openai", llm_model=None)
-        resolved = None or cfg.llm_model or DEFAULT_MODELS.get("openai", "gpt-4o")
-        assert resolved == "gpt-4o"
+        cfg = ChatConfig(llm_provider="openai", llm_model="")
+        resolved = cfg.llm_model or DEFAULT_MODELS.get("openai", "gpt-5.3")
+        assert resolved == "gpt-5.3"

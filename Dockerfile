@@ -28,7 +28,7 @@ COPY pyproject.toml uv.lock ./
 # 2) install only dependencies (not project) — cache-friendly
 # Use --frozen to respect lockfile, skip CUDA/NVIDIA packages (installed as CPU-only later)
 ENV UV_HTTP_TIMEOUT=300
-RUN uv sync --no-cache --frozen --no-install-project --extra api --extra embeddings --extra chroma --extra latex-ocr \
+RUN uv sync --no-cache --frozen --no-install-project --extra server --extra embeddings --extra chroma --extra latex-ocr \
     --no-install-package torch \
     --no-install-package torchvision \
     --no-install-package nvidia-cublas-cu12 \
@@ -54,7 +54,7 @@ RUN uv sync --no-cache --frozen --no-install-project --extra api --extra embeddi
 COPY . .
 
 # 4) install the project itself (skip torch/CUDA, installed as CPU-only next)
-RUN uv sync --no-cache --frozen --extra api --extra embeddings --extra chroma --extra latex-ocr \
+RUN uv sync --no-cache --frozen --extra server --extra embeddings --extra chroma --extra latex-ocr \
     --no-install-package torch \
     --no-install-package torchvision \
     --no-install-package nvidia-cublas-cu12 \
@@ -88,4 +88,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD [".venv/bin/uvicorn", "clean_rag.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD [".venv/bin/uvicorn", "longparser.server.app:app", "--host", "0.0.0.0", "--port", "8000"]

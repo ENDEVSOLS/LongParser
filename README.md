@@ -39,11 +39,12 @@
 | **Multi-format extraction** | PDF, DOCX, PPTX, XLSX, CSV via Docling |
 | **Hybrid chunking** | Token-aware, heading-hierarchy-aware, table-aware |
 | **HITL review** | Human-in-the-Loop block & chunk editing before embedding |
-| **LangGraph HITL** | `approve / edit / reject` workflow with LangGraph `interrupt()` |
+| **LangGraph HITL** | `approve / edit / reject` workflow with LangGraph `interrupt()` and MongoDB checkpointer |
 | **3-layer memory** | Short-term turns + rolling summary + long-term facts |
 | **Multi-provider LLM** | OpenAI, Gemini, Groq, OpenRouter |
 | **Multi-backend vectors** | Chroma, FAISS, Qdrant |
-| **Async-first API** | FastAPI + Motor (MongoDB) + ARQ (Redis) |
+| **Production-ready API** | FastAPI + Motor (MongoDB) + ARQ + Redis (Queue & Rate Limiting) |
+| **Enterprise Security** | Tenant isolation, Role-Based Access Control (RBAC), and CORS |
 | **LangChain adapters** | Drop-in `BaseRetriever` and LlamaIndex `QueryEngine` |
 | **Privacy-first** | All processing runs locally; no data leaves your infra |
 
@@ -233,11 +234,14 @@ Copy `.env.example` to `.env` and set:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LONGPARSER_MONGO_URL` | `mongodb://localhost:27017` | MongoDB connection |
-| `LONGPARSER_REDIS_URL` | `redis://localhost:6379` | Redis for job queue |
+| `LONGPARSER_REDIS_URL` | `redis://localhost:6379` | Redis for job queue & rate limits |
 | `LONGPARSER_LLM_PROVIDER` | `openai` | LLM provider |
-| `LONGPARSER_LLM_MODEL` | `gpt-4o` | Model name |
+| `LONGPARSER_LLM_MODEL` | `gpt-5.3` | Model name |
 | `LONGPARSER_EMBED_PROVIDER` | `huggingface` | Embedding provider |
 | `LONGPARSER_VECTOR_DB` | `chroma` | Vector store backend |
+| `LONGPARSER_CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `LONGPARSER_RATE_LIMIT` | `60` | Max RPM per tenant |
+| `LONGPARSER_ADMIN_KEYS` | (empty) | Comma-separated admin API keys |
 
 ---
 

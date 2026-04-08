@@ -93,7 +93,7 @@ class EmbeddingEngine:
 
         # Stable json dump
         cfg_str = json.dumps(config, sort_keys=True)
-        return hashlib.sha1(cfg_str.encode("utf-8")).hexdigest()[:10]
+        return hashlib.sha256(cfg_str.encode("utf-8")).hexdigest()[:10]
 
     @property
     def dim(self) -> int:
@@ -145,8 +145,8 @@ class EmbeddingEngine:
             try:
                 if 'r' in locals():
                     r.set(cache_key, self._dim)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to set Redis cache: {e}")
 
             return self._dim
 

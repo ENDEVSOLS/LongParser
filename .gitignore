@@ -61,3 +61,10 @@ MANIFEST.in
 
 # IDE / Gemini agent
 .gemini/
+
+# Logs
+*.log
+
+# Temporary test files
+test_hack.csv
+tests_temp/

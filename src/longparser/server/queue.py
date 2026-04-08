@@ -45,12 +45,7 @@ class ARQBackend(QueueBackend):
             from arq import create_pool
             from arq.connections import RedisSettings
 
-            url = self.redis_url.replace("redis://", "")
-            # Strip database number (e.g., /0) if present
-            url = url.split("/")[0]
-            host, _, port_str = url.partition(":")
-            port = int(port_str) if port_str else 6379
-            self._pool = await create_pool(RedisSettings(host=host, port=port))
+            self._pool = await create_pool(RedisSettings.from_dsn(self.redis_url))
         return self._pool
 
     async def enqueue(self, task_name: str, payload: dict) -> str:
