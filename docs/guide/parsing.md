@@ -18,7 +18,7 @@ LongParser uses **Docling** with Tesseract CLI OCR as its extraction engine — 
 from longparser import DocumentPipeline, ProcessingConfig
 
 pipeline = DocumentPipeline(ProcessingConfig())
-doc = pipeline.process("paper.pdf")
+result = pipeline.process_file("paper.pdf")
 ```
 
 ## Formula Modes
@@ -36,15 +36,15 @@ config = ProcessingConfig(formula_mode="smart")
 
 ```python
 # Pages
-for page in doc.pages:
+for page in result.document.pages:
     print(f"Page {page.page_number}: {page.width}x{page.height}")
 
 # Blocks (semantic units)
-for block in doc.blocks:
+for block in result.document.blocks:
     print(f"[{block.type}] p={block.provenance.page_number}: {block.text[:80]}")
 
 # Chunks (RAG-ready)
-for chunk in doc.chunks:
+for chunk in result.chunks:
     print(f"{chunk.chunk_type} | {chunk.token_count} tokens | pages={chunk.page_numbers}")
 ```
 

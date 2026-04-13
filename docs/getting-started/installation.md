@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.10, 3.11, or 3.12
+- Python 3.10, 3.11, 3.12, or 3.13
 - Tesseract OCR (`brew install tesseract` / `apt install tesseract-ocr`)
 
 ---
@@ -104,5 +104,5 @@ The server starts on `http://localhost:8000`.
 
 ```python
 import longparser
-print(longparser.__version__)  # 0.1.2
+print(longparser.__version__)  # 0.1.3
 ```

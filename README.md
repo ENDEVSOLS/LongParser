@@ -18,7 +18,7 @@
       <img src="https://static.pepy.tech/badge/longparser/month" alt="Monthly Downloads">
     </a>
     <a href="https://www.python.org/">
-      <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python">
+      <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python">
     </a>
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="MIT License">
@@ -105,9 +105,9 @@ pip install "longparser[cpu]"
 ### Python SDK
 
 ```python
-from longparser import PipelineOrchestrator, ProcessingConfig
+from longparser import DocumentPipeline, ProcessingConfig
 
-pipeline = PipelineOrchestrator()
+pipeline = DocumentPipeline(ProcessingConfig())
 result = pipeline.process_file("document.pdf")
 
 print(f"Pages: {result.document.metadata.total_pages}")
@@ -186,7 +186,7 @@ src/longparser/
 ├── schemas.py           ← core Pydantic models (Document, Block, Chunk, …)
 ├── extractors/          ← Docling, LaTeX OCR backends
 ├── chunkers/            ← HybridChunker
-├── pipeline/            ← PipelineOrchestrator
+├── pipeline/            ← DocumentPipeline
 ├── integrations/        ← LangChain loader & LlamaIndex reader
 ├── utils/               ← shared helpers (RTL detection, …)
 └── server/              ← REST API layer

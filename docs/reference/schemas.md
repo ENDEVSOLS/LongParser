@@ -4,7 +4,7 @@ Core data models used throughout LongParser.
 
 ## Document
 
-Top-level container returned by `DocumentPipeline.process()`.
+Top-level container returned by `DocumentPipeline.process_file()`.
 
 ```python
 class Document:

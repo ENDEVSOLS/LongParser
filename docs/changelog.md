@@ -5,6 +5,26 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.3] — 2026-04-13
+
+### Fixed
+
+- **Source code**: Added `DocumentPipeline` as a public alias for `PipelineOrchestrator` —
+  docs, quickstart, and all examples now use this name consistently
+- **Documentation**: Fixed wrong coverage path `long_parser` → `longparser` in `CONTRIBUTING.md`
+- **Documentation**: Replaced stale `cleanrag-api` reference in Docker deployment docs
+- **Documentation**: Standardized Gemini API key env var to `GOOGLE_API_KEY` across all docs
+- **Source code**: Updated default LLM model fallback from `gpt-4o` to `gpt-5.3` in
+  `schemas.py`, `llm_chain.py`, and `engine.py`
+- **Source code**: Renamed stale `cleanrag:` Redis key prefix to `longparser:` in embeddings
+
+### Changed
+
+- Python 3.13 added to CI matrix, badges, and installation docs
+- `SECURITY.md` updated with Redis rate-limiting and CORS threat mitigations
+
+---
+
 ## [0.1.2] — 2026-04-05
 
 ### Changed

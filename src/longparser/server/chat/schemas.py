@@ -33,7 +33,7 @@ class ChatConfig(BaseModel):
         default_factory=lambda: os.getenv("LONGPARSER_LLM_PROVIDER", "openai")
     )
     llm_model: str = Field(
-        default_factory=lambda: os.getenv("LONGPARSER_LLM_MODEL", "gpt-4o")
+        default_factory=lambda: os.getenv("LONGPARSER_LLM_MODEL", "gpt-5.3")
     )
     max_input_tokens: int = Field(
         default_factory=lambda: int(os.getenv("LONGPARSER_CHAT_MAX_INPUT_TOKENS", "1000"))

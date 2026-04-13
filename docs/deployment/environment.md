@@ -16,7 +16,7 @@ Copy `.env.example` to `.env` and configure for your deployment.
 | `LONGPARSER_LLM_PROVIDER` | `openai` | LLM provider |
 | `LONGPARSER_LLM_MODEL` | _(provider default)_ | Model name |
 | `OPENAI_API_KEY` | — | OpenAI API key |
-| `GEMINI_API_KEY` | — | Google Gemini API key |
+| `GOOGLE_API_KEY` | — | Google Gemini API key |
 | `GROQ_API_KEY` | — | Groq API key |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key |
 

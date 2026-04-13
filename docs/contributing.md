@@ -84,7 +84,7 @@ Use Python 3.10+ type hints. All public API must be fully annotated.
 uv run pytest tests/unit/ -v
 
 # With coverage:
-uv run pytest tests/unit/ --cov=src/long_parser --cov-report=term-missing
+uv run pytest tests/unit/ --cov=src/longparser --cov-report=term-missing
 
 # Full test suite (requires MongoDB + Redis):
 uv run pytest tests/ -v

@@ -17,11 +17,11 @@ from longparser import DocumentPipeline, ProcessingConfig
 pipeline = DocumentPipeline(ProcessingConfig())
 
 # Parse a PDF
-doc = pipeline.process("research_paper.pdf")
+result = pipeline.process_file("research_paper.pdf")
 
-print(f"Pages: {len(doc.pages)}")
-print(f"Blocks: {len(doc.blocks)}")
-print(f"Chunks: {len(doc.chunks)}")
+print(f"Pages: {result.document.metadata.total_pages}")
+print(f"Chunks: {len(result.chunks)}")
+print(result.chunks[0].text)
 ```
 
 ## 3. Inspect Chunks

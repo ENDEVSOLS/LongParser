@@ -70,6 +70,6 @@ Every answer's `cited_chunk_ids` are validated against the retrieved set. IDs no
 | Provider | Key |
 |---|---|
 | OpenAI | `OPENAI_API_KEY` |
-| Google Gemini | `GEMINI_API_KEY` |
+| Google Gemini | `GOOGLE_API_KEY` |
 | Groq | `GROQ_API_KEY` |
 | OpenRouter | `OPENROUTER_API_KEY` |

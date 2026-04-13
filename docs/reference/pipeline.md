@@ -7,39 +7,49 @@ The `DocumentPipeline` is the main entry point for LongParser's extraction pipel
 ```python
 from longparser import DocumentPipeline, ProcessingConfig
 
-pipeline = DocumentPipeline(config=ProcessingConfig())
-doc = pipeline.process("document.pdf")
+pipeline = DocumentPipeline(ProcessingConfig())
+result = pipeline.process_file("document.pdf")
 ```
 
 ### Constructor
 
 ```python
-DocumentPipeline(config: ProcessingConfig)
+DocumentPipeline(config: ProcessingConfig | None = None)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `config` | `ProcessingConfig` | Extraction and chunking configuration |
+| `config` | `ProcessingConfig \| None` | Extraction and chunking configuration (uses defaults if `None`) |
 
 ### Methods
 
-#### `process(file_path)`
+#### `process_file(file_path)`
 
 Process a document end-to-end through Extract → Validate → Chunk.
 
 ```python
-doc = pipeline.process("report.pdf")
-# Returns: longparser.schemas.Document
+result = pipeline.process_file("report.pdf")
+# Returns: longparser.pipeline.PipelineResult
 ```
 
-**Returns:** `Document` with `.pages`, `.blocks`, `.chunks` populated.
+**Returns:** `PipelineResult` with `.document` and `.chunks` populated.
+
+#### `process(request)`
+
+Process a document from a `JobRequest` object.
+
+```python
+from longparser import JobRequest
+request = JobRequest(file_path="report.pdf")
+result = pipeline.process(request)
+```
 
 #### `process_batch(file_paths)`
 
 Process multiple documents sequentially.
 
 ```python
-docs = pipeline.process_batch(["a.pdf", "b.docx", "c.pptx"])
+results = pipeline.process_batch(["a.pdf", "b.docx", "c.pptx"])
 ```
 
 ## ProcessingConfig

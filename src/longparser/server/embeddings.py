@@ -108,7 +108,7 @@ class EmbeddingEngine:
                 return self._dim
 
             fp = self.get_fingerprint()
-            cache_key = f"cleanrag:embed_dim:{fp}"
+            cache_key = f"longparser:embed_dim:{fp}"
 
             # 1) Try Redis cross-process cache if available
             try:

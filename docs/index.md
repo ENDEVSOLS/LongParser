@@ -16,7 +16,7 @@
       <img src="https://static.pepy.tech/badge/longparser/month" alt="Monthly Downloads">
     </a>&nbsp;
     <a href="https://www.python.org/">
-      <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python">
+      <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python">
     </a>&nbsp;
     <a href="https://github.com/ENDEVSOLS/LongParser/blob/main/LICENSE">
       <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="MIT License">
@@ -57,9 +57,10 @@ pip install longparser
 from longparser import DocumentPipeline, ProcessingConfig
 
 pipeline = DocumentPipeline(ProcessingConfig())
-doc = pipeline.process("report.pdf")
+result = pipeline.process_file("report.pdf")
 
-print(f"Extracted {len(doc.blocks)} blocks, {len(doc.chunks)} chunks")
+print(f"Chunks: {len(result.chunks)}")
+print(result.chunks[0].text)
 ```
 
 ---

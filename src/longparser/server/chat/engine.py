@@ -76,7 +76,7 @@ RAG_PROMPT = ChatPromptTemplate.from_messages([
 # Token Counting (model-aware) — kept as custom logic
 # ---------------------------------------------------------------------------
 
-def count_tokens(text: str, model: str = "gpt-4o") -> int:
+def count_tokens(text: str, model: str = "gpt-5.3") -> int:
     """Count tokens — exact for OpenAI models, conservative approx for others."""
     try:
         import tiktoken
@@ -96,7 +96,7 @@ def budget_trim(
     recent_turns: list[dict],
     rolling_summary: str,
     long_term_facts: list[dict],
-    model: str = "gpt-4o",
+    model: str = "gpt-5.3",
     max_prompt_tokens: int = 6000,
 ) -> dict:
     """Priority-ordered truncation of prompt variables to fit token budget.

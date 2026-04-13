@@ -115,7 +115,7 @@ def get_chat_model(
     """
     config = config or ChatConfig()
     provider = provider or config.llm_provider
-    model = model or config.llm_model or DEFAULT_MODELS.get(provider, "gpt-4o")
+    model = model or config.llm_model or DEFAULT_MODELS.get(provider, "gpt-5.3")
     max_tokens = max_tokens or config.max_output_tokens
 
     creator = _CREATORS.get(provider)

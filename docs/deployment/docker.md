@@ -49,5 +49,5 @@ docker compose up --scale longparser=3
 
 ```bash
 curl http://localhost:8000/health
-# {"status": "ok", "service": "cleanrag-api"}
+# {"status": "ok", "service": "longparser-api"}
 ```

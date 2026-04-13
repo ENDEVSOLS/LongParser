@@ -33,7 +33,7 @@ cp .env.example .env
 |---|---|
 | `LONGPARSER_LLM_PROVIDER` | `openai` / `gemini` / `groq` / `openrouter` |
 | `LONGPARSER_LLM_MODEL` | Model name (uses provider default if unset) |
-| `GEMINI_API_KEY` | For Google Gemini |
+| `GOOGLE_API_KEY` | For Google Gemini |
 | `GROQ_API_KEY` | For Groq |
 
 ## Vector Store

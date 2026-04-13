@@ -9,9 +9,9 @@ Built by ENDEVSOLS for production RAG pipelines.
 
 Quick start::
 
-    from longparser import PipelineOrchestrator, ProcessingConfig
+    from longparser import DocumentPipeline, ProcessingConfig
 
-    pipeline = PipelineOrchestrator()
+    pipeline = DocumentPipeline(ProcessingConfig())
     result = pipeline.process_file("document.pdf")
     print(result.chunks[0].text)
 
@@ -19,13 +19,13 @@ For the full REST API server::
 
     uv run uvicorn longparser.server.app:app --reload --port 8000
 
-See :class:`~longparser.pipeline.PipelineOrchestrator` for the main SDK entry
+See :class:`~longparser.pipeline.DocumentPipeline` for the main SDK entry
 point and :mod:`longparser.server` for the REST API layer.
 """
 
 from __future__ import annotations
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "ENDEVSOLS Team"
 __license__ = "MIT"
 
@@ -62,6 +62,9 @@ def __getattr__(name: str):
     if name == "PipelineOrchestrator":
         from .pipeline import PipelineOrchestrator
         return PipelineOrchestrator
+    if name == "DocumentPipeline":
+        from .pipeline import DocumentPipeline
+        return DocumentPipeline
     if name == "PipelineResult":
         from .pipeline import PipelineResult
         return PipelineResult
@@ -99,6 +102,7 @@ __all__ = [
     # Lazily imported (require extras)
     "DoclingExtractor",
     "PipelineOrchestrator",
+    "DocumentPipeline",
     "PipelineResult",
     "HybridChunker",
 ]
