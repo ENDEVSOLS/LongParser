@@ -1,4 +1,13 @@
-"""Simple pipeline orchestrator for LongParser."""
+"""Simple pipeline orchestrator for LongParser.
+
+Supports multiple extraction backends:
+
+- ``"docling"`` (default) — Docling with Tesseract CLI OCR (MIT)
+- ``"pymupdf"`` — PyMuPDF4LLM for fast native PDF extraction (AGPL, optional)
+- ``"auto"``    — Automatic backend selection based on document properties
+
+Language detection runs before OCR to set the correct Tesseract language.
+"""
 
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -11,6 +20,7 @@ from ..schemas import Document, ProcessingConfig, JobRequest, BlockType, Chunkin
 from ..extractors import DoclingExtractor
 from ..extractors.docling_extractor import HierarchyChunk
 from ..chunkers import HybridChunker
+from ..utils.lang_detect import detect_language, get_tesseract_langs, extract_sample_text
 
 logger = logging.getLogger(__name__)
 
@@ -30,43 +40,189 @@ class PipelineResult:
 
 class PipelineOrchestrator:
     """
-    Simple pipeline orchestrator using Docling.
+    Pipeline orchestrator with backend selection and language detection.
     
     Flow:
-    1. Docling extracts with Tesseract CLI OCR
-    2. Layout analysis detects structure
-    3. HierarchicalChunker preserves heading hierarchy
+    1. (Optional) Auto-detect document language
+    2. Select backend: Docling, PyMuPDF, or auto-route
+    3. Extract with chosen backend
+    4. HierarchicalChunker preserves heading hierarchy
+    
+    Parameters
+    ----------
+    config:
+        Processing configuration with backend, language, and layout settings.
+        Only used for backend selection during init. Per-file config is passed
+        to ``process_file()``.
+    tesseract_lang:
+        Languages for Tesseract OCR (default: ``["eng"]``). Overridden by
+        ``config.languages`` or auto-detection if enabled.
+    tessdata_path:
+        Path to tessdata directory with language models and configs.
+    force_full_page_ocr:
+        If True, OCR entire page even if embedded text exists.
     """
     
-    def __init__(self, tesseract_lang: List[str] = None, tessdata_path: str = None, force_full_page_ocr: bool = False):
+    def __init__(
+        self,
+        config: Optional[ProcessingConfig] = None,
+        tesseract_lang: List[str] = None,
+        tessdata_path: str = None,
+        force_full_page_ocr: bool = False,
+    ):
+        self._config = config or ProcessingConfig()
+        self._tessdata_path = tessdata_path
+        self._force_full_page_ocr = force_full_page_ocr
+        self._base_tesseract_lang = tesseract_lang
+
+        # Determine backend from config
+        backend = self._config.backend
+
+        if backend == "pymupdf":
+            # Lazy import — only loaded when user explicitly requests it
+            from ..extractors.pymupdf_extractor import PyMuPDFExtractor
+            self.extractor = PyMuPDFExtractor()
+            self._backend_name = "pymupdf"
+            logger.info("Pipeline initialized with PyMuPDF4LLM backend (CPU-native, fast)")
+
+        elif backend == "auto":
+            # Auto mode: start with Docling (safe default), route at process time
+            self.extractor = DoclingExtractor(
+                tesseract_lang=tesseract_lang,
+                tessdata_path=tessdata_path,
+                force_full_page_ocr=force_full_page_ocr,
+            )
+            self._backend_name = "auto"
+            logger.info("Pipeline initialized in auto mode (will choose backend per document)")
+
+        else:
+            # Default: Docling (MIT, always available)
+            self.extractor = DoclingExtractor(
+                tesseract_lang=tesseract_lang,
+                tessdata_path=tessdata_path,
+                force_full_page_ocr=force_full_page_ocr,
+            )
+            self._backend_name = "docling"
+            logger.info("Pipeline initialized with Docling backend (default)")
+
+    def _resolve_languages(
+        self,
+        file_path: Path,
+        config: ProcessingConfig,
+    ) -> list[str]:
+        """Resolve OCR languages via user override or auto-detection.
+
+        Priority order:
+        1. ``config.languages`` (explicit user override — always wins)
+        2. ``self._base_tesseract_lang`` (constructor param)
+        3. Auto-detection via ``fast-langdetect`` (if enabled)
+        4. Default: ``["eng"]``
         """
-        Initialize pipeline.
-        
-        Args:
-            tesseract_lang: Languages for Tesseract OCR (default: ["eng"])
-            tessdata_path: Path to tessdata directory with language models and configs.
-            force_full_page_ocr: If True, OCR entire page even if embedded text exists.
-        """
-        self.extractor = DoclingExtractor(
-            tesseract_lang=tesseract_lang,
-            tessdata_path=tessdata_path,
-            force_full_page_ocr=force_full_page_ocr,
-        )
-    
+        # 1. Explicit user override
+        if config.languages:
+            logger.info("Using user-specified languages: %s", config.languages)
+            return config.languages
+
+        # 2. Constructor param
+        if self._base_tesseract_lang:
+            # If auto-detect is enabled, try to improve on constructor default
+            if config.auto_detect_language:
+                detected_langs = self._auto_detect(file_path)
+                if detected_langs:
+                    return detected_langs
+            return self._base_tesseract_lang
+
+        # 3. Auto-detect
+        if config.auto_detect_language:
+            detected_langs = self._auto_detect(file_path)
+            if detected_langs:
+                return detected_langs
+
+        # 4. Default
+        return ["eng"]
+
+    def _auto_detect(self, file_path: Path) -> Optional[list[str]]:
+        """Run language detection and return Tesseract codes, or None."""
+        sample = extract_sample_text(file_path)
+        if not sample or len(sample.strip()) < 20:
+            return None
+
+        lang_code, confidence = detect_language(sample)
+        if confidence > 0.0:
+            tess_langs = get_tesseract_langs(lang_code)
+            logger.info(
+                "Auto-detected language: %s (%.0f%%) → Tesseract: %s",
+                lang_code, confidence * 100, tess_langs,
+            )
+            # Store for later use in document metadata
+            self._detected_lang = lang_code
+            self._detected_lang_confidence = confidence
+            return tess_langs
+
+        return None
+
+    def _should_use_pymupdf(self, file_path: Path) -> bool:
+        """Check if PyMuPDF is a better choice for this file (auto mode)."""
+        ext = file_path.suffix.lower()
+
+        # PyMuPDF only handles PDFs
+        if ext != ".pdf":
+            return False
+
+        # Check if PDF has a text layer (= native, not scanned)
+        sample = extract_sample_text(file_path, max_chars=500)
+        if sample and len(sample.strip()) > 100:
+            # Has text → native PDF → PyMuPDF is faster
+            try:
+                from ..extractors.pymupdf_extractor import PyMuPDFExtractor
+                return True
+            except ImportError:
+                # pymupdf4llm not installed — fall back to Docling
+                logger.debug("Auto mode: pymupdf4llm not installed, using Docling")
+                return False
+
+        # Scanned PDF or too little text → use Docling (has OCR)
+        return False
+
     def process(self, request: JobRequest) -> PipelineResult:
         """Process a document."""
         start_time = time.time()
         
         file_path = Path(request.file_path)
         config = request.config
+
+        # Initialize language detection state
+        self._detected_lang = None
+        self._detected_lang_confidence = 0.0
         
         logger.info(f"Processing: {file_path.name}")
-        
+
+        # Auto-mode: decide backend per document
+        if self._backend_name == "auto" and self._should_use_pymupdf(file_path):
+            from ..extractors.pymupdf_extractor import PyMuPDFExtractor
+            extractor = PyMuPDFExtractor()
+            logger.info("Auto mode selected: PyMuPDF4LLM (native PDF detected)")
+        else:
+            extractor = self.extractor
+
+            # Resolve languages for Docling backend
+            if isinstance(extractor, DoclingExtractor):
+                resolved_langs = self._resolve_languages(file_path, config)
+                extractor._languages = resolved_langs
+
         # Extract document
-        document, meta = self.extractor.extract(file_path, config)
-        
-        # Get hierarchy
-        hierarchy = self.extractor.get_hierarchy(file_path, config)
+        document, meta = extractor.extract(file_path, config)
+
+        # Inject language detection results into metadata
+        if self._detected_lang:
+            document.metadata.detected_language = self._detected_lang
+            document.metadata.language_confidence = self._detected_lang_confidence
+
+        # Get hierarchy (only DoclingExtractor has this)
+        if isinstance(extractor, DoclingExtractor):
+            hierarchy = extractor.get_hierarchy(file_path, config)
+        else:
+            hierarchy = []
         
         processing_time = time.time() - start_time
         logger.info(f"Completed in {processing_time:.2f}s")
@@ -164,6 +320,8 @@ class PipelineOrchestrator:
             "total_blocks": len(all_blocks),
             "total_tables": total_tables,
             "processing_time_seconds": result.processing_time_seconds,
+            "detected_language": result.document.metadata.detected_language,
+            "language_confidence": result.document.metadata.language_confidence,
             "stages_completed": [
                 "stage1_extraction",
                 "stage2_validation",
@@ -228,3 +386,4 @@ class PipelineOrchestrator:
     def save_images(self, output_dir: Path) -> List[Path]:
         """Save extracted images."""
         return self.extractor.save_images(output_dir)
+

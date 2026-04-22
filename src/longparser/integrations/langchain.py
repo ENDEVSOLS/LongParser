@@ -5,7 +5,7 @@ wraps the LongParser extraction pipeline.
 
 Install the extra to use this adapter::
 
-    pip install clean_rag[langchain]
+    pip install longparser[langchain]
 
 Usage::
 
@@ -27,7 +27,7 @@ from ..schemas import ProcessingConfig, ChunkingConfig
 
 _INSTALL_MSG = (
     "langchain-core is required for the LangChain adapter. "
-    "Install it with:  pip install clean_rag[langchain]"
+    "Install it with:  pip install longparser[langchain]"
 )
 
 
@@ -95,6 +95,7 @@ class LongParserLoader:
         from ..pipeline import PipelineOrchestrator
 
         pipeline = PipelineOrchestrator(
+            config=self.config,
             tesseract_lang=self.tesseract_lang,
             tessdata_path=self.tessdata_path,
         )

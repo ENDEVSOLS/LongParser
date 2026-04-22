@@ -5,7 +5,7 @@ that wraps the LongParser extraction pipeline.
 
 Install the extra to use this adapter::
 
-    pip install clean_rag[llamaindex]
+    pip install longparser[llamaindex]
 
 Usage::
 
@@ -27,7 +27,7 @@ from ..schemas import ProcessingConfig, ChunkingConfig
 
 _INSTALL_MSG = (
     "llama-index-core is required for the LlamaIndex adapter. "
-    "Install it with:  pip install clean_rag[llamaindex]"
+    "Install it with:  pip install longparser[llamaindex]"
 )
 
 
@@ -105,6 +105,7 @@ class LongParserReader:
 
         file = Path(file)
         pipeline = PipelineOrchestrator(
+            config=self.config,
             tesseract_lang=self.tesseract_lang,
             tessdata_path=self.tessdata_path,
         )

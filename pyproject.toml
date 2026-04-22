@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "longparser"
-version = "0.1.3"
+version = "0.1.4"
 description = "Privacy-first document intelligence engine — converts PDFs, DOCX, PPTX, XLSX, and CSV into AI-ready Markdown + structured JSON for RAG pipelines."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
@@ -36,6 +36,7 @@ dependencies = [
     "docling>=2.14",
     "docling-core>=2.13",
     "langgraph-checkpoint-mongodb>=0.3.1",
+    "fast-langdetect>=0.3,<1.0",  # Apache-2.0 — document language detection
 ]
 
 [project.optional-dependencies]
@@ -51,6 +52,20 @@ langchain = [
 llamaindex = [
     "llama-index-core>=0.10",
 ]
+# ----------- v0.1.4: Optional extraction backends -----------
+# ⚠️ pymupdf4llm is AGPL-3.0 licensed. See LICENSE-THIRD-PARTY.md.
+# Only loaded when user sets backend="pymupdf".
+pymupdf = [
+    "pymupdf4llm>=1.27",
+]
+# ⚠️ marker-pdf is GPL-3.0. GPU recommended. Future release.
+# marker = [
+#     "marker-pdf",
+# ]
+# ⚠️ surya-ocr is GPL-3.0. GPU recommended. Future release.
+# surya = [
+#     "surya-ocr>=0.17",
+# ]
 # FastAPI REST server + MongoDB + job queue + LangChain chat engine
 server = [
     "fastapi>=0.115",

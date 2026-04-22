@@ -1,0 +1,50 @@
+name: License Safety Check
+
+on: [push, pull_request]
+
+jobs:
+  license-check:
+    name: Ensure no GPL/AGPL imports in core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check core files for GPL/AGPL imports
+        run: |
+          echo "=== License Safety Check ==="
+          echo "Verifying no GPL/AGPL package is imported in core code..."
+          echo ""
+
+          FAIL=0
+
+          # List of GPL/AGPL package import patterns to block
+          BLOCKED_PATTERNS="pymupdf4llm|pymupdf|import marker\.|from marker\.|import surya|from surya"
+
+          # Files that ARE allowed to import these (isolated backends)
+          ALLOWED_FILES=(
+            "src/longparser/extractors/pymupdf_extractor.py"
+            "src/longparser/extractors/marker_extractor.py"
+          )
+
+          # Build grep exclude args
+          EXCLUDE_ARGS=""
+          for f in "${ALLOWED_FILES[@]}"; do
+            EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=$f"
+          done
+
+          # Search all Python files in src/longparser EXCEPT allowed files
+          MATCHES=$(grep -rnE "$BLOCKED_PATTERNS" src/longparser/ \
+            --include='*.py' $EXCLUDE_ARGS || true)
+
+          if [ -n "$MATCHES" ]; then
+            echo "❌ FAIL: GPL/AGPL imports found in core code!"
+            echo ""
+            echo "$MATCHES"
+            echo ""
+            echo "These packages must ONLY be imported in their isolated extractor files."
+            FAIL=1
+          else
+            echo "✅ PASS: No GPL/AGPL imports in core code."
+          fi
+
+          exit $FAIL

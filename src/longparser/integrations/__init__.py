@@ -2,9 +2,9 @@
 
 Install the extras to use these adapters::
 
-    pip install clean_rag[langchain]
-    pip install clean_rag[llamaindex]
-    pip install clean_rag[all]
+    pip install longparser[langchain]
+    pip install longparser[llamaindex]
+    pip install longparser[all]
 """
 
 from __future__ import annotations

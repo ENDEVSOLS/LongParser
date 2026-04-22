@@ -118,6 +118,8 @@ class PageProfile(BaseModel):
     table_confidence: Optional[float] = None
     has_rtl: bool = False
     has_math: bool = False
+    detected_columns: int = Field(default=1, description="Number of text columns detected on page")
+    reading_order_confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Confidence of reading-order reconstruction")
 
 
 class Page(BaseModel):
@@ -135,6 +137,8 @@ class DocumentMetadata(BaseModel):
     source_file: str
     file_hash: str = ""
     language: Optional[str] = None
+    detected_language: Optional[str] = Field(default=None, description="Auto-detected language code (ISO 639-1) via fast-langdetect")
+    language_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence of auto-detected language")
     total_pages: int = 0
     academic_mode: bool = False
     rtl_hint: bool = False
@@ -163,6 +167,17 @@ class Document(BaseModel):
 
 class ProcessingConfig(BaseModel):
     """Configuration for pipeline execution."""
+    # --- v0.1.4: Backend selection ---
+    backend: str = Field(default="docling", description="Extraction backend: 'docling' | 'pymupdf' | 'auto'")
+
+    # --- v0.1.4: Language detection ---
+    languages: Optional[list[str]] = Field(default=None, description="Explicit Tesseract language codes, e.g. ['eng','ara']. Overrides auto-detect.")
+    auto_detect_language: bool = Field(default=True, description="Auto-detect document language before OCR (uses fast-langdetect)")
+
+    # --- v0.1.4: Multi-column layout ---
+    column_count_hint: Optional[int] = Field(default=None, description="Manual column count hint. None = auto-detect by Docling")
+    force_left_to_right: bool = Field(default=False, description="Force left-to-right top-to-bottom reading order")
+
     academic_mode: bool = False
     rtl_hint: bool = False
     do_ocr: bool = True
@@ -202,6 +217,10 @@ class ExtractionMetadata(BaseModel):
     reprocessed_pages: list[int] = Field(default_factory=list)
     ocr_backend_used: Optional[str] = None
     reasons: list[str] = Field(default_factory=list)
+    # --- v0.1.4: OCR routing metadata ---
+    ocr_strategy: str = Field(default="standard", description="OCR strategy used: 'standard' | 'math' | 'full_ocr'")
+    is_scanned: bool = Field(default=False, description="Whether the document was detected as scanned (no text layer)")
+    page_complexity_scores: dict[int, int] = Field(default_factory=dict, description="Per-page complexity scores used for OCR routing")
 
 
 class ChunkingConfig(BaseModel):
@@ -222,12 +241,13 @@ class Chunk(BaseModel):
     chunk_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     text: str
     token_count: int
-    chunk_type: str  # "section" | "table" | "table_schema" | "list" | "equation" | "continuation"
+    chunk_type: str  # "section" | "table" | "table_schema" | "list" | "equation" | "figure" | "continuation"
     section_path: list[str] = Field(default_factory=list)
     page_numbers: list[int] = Field(default_factory=list)
     block_ids: list[str] = Field(default_factory=list)
     overlap_with_previous: bool = False
     equation_detected: bool = False
+    image_path: Optional[str] = Field(default=None, description="Path to figure image if chunk_type == 'figure'")
     metadata: dict = Field(default_factory=dict)  # row_start, row_end, sheet, col_band
 
 
