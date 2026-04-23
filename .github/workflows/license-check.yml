@@ -22,8 +22,8 @@ jobs:
 
           # Files that ARE allowed to import these (isolated backends)
           ALLOWED_FILES=(
-            "src/longparser/extractors/pymupdf_extractor.py"
-            "src/longparser/extractors/marker_extractor.py"
+            "pymupdf_extractor.py"
+            "marker_extractor.py"
           )
 
           # Build grep exclude args
