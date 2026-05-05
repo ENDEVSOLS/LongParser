@@ -1,6 +1,6 @@
 # Document Parsing
 
-LongParser uses **Docling** with Tesseract CLI OCR as its extraction engine — supporting PDF, DOCX, PPTX, XLSX, and CSV.
+LongParser supports multiple extraction backends — **Docling** (default, with Tesseract OCR), **PyMuPDF4LLM** (10× faster for simple PDFs), and **Marker** (high-fidelity Markdown for academic papers).
 
 ## Supported Formats
 

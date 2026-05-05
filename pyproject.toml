@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "longparser"
-version = "0.1.4"
+version = "0.1.5"
 description = "Privacy-first document intelligence engine — converts PDFs, DOCX, PPTX, XLSX, and CSV into AI-ready Markdown + structured JSON for RAG pipelines."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
@@ -58,10 +58,14 @@ llamaindex = [
 pymupdf = [
     "pymupdf4llm>=1.27",
 ]
+# NER redaction (spaCy) for advanced PII detection
+ner = [
+    "spacy>=3.7.0",
+]
 # ⚠️ marker-pdf is GPL-3.0. GPU recommended. Future release.
-# marker = [
-#     "marker-pdf",
-# ]
+marker = [
+    "marker-pdf>=0.3.0",
+]
 # ⚠️ surya-ocr is GPL-3.0. GPU recommended. Future release.
 # surya = [
 #     "surya-ocr>=0.17",

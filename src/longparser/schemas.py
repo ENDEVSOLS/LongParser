@@ -107,6 +107,7 @@ class Block(BaseModel):
     table: Optional[Table] = None
     image_path: Optional[str] = None
     bbox_px: Optional[tuple] = Field(default=None, description="Pixel-space bounding box (x0,y0,x1,y1) for MFD dedup")
+    pii_redactions: dict = Field(default_factory=dict, description="PII redaction map: placeholder → original (for authorized review)")
 
 
 class PageProfile(BaseModel):
@@ -168,7 +169,8 @@ class Document(BaseModel):
 class ProcessingConfig(BaseModel):
     """Configuration for pipeline execution."""
     # --- v0.1.4: Backend selection ---
-    backend: str = Field(default="docling", description="Extraction backend: 'docling' | 'pymupdf' | 'auto'")
+    backend: str = Field(default="docling", description="Extraction backend: 'docling' | 'pymupdf' | 'marker' | 'auto'")
+    force_marker_cpu: bool = Field(default=False, description="Bypass 10-page soft cap when running Marker on CPU")
 
     # --- v0.1.4: Language detection ---
     languages: Optional[list[str]] = Field(default=None, description="Explicit Tesseract language codes, e.g. ['eng','ara']. Overrides auto-detect.")
@@ -197,6 +199,10 @@ class ProcessingConfig(BaseModel):
     force_full_page_ocr: bool = False
     # Exclude page headers and footers from extraction output
     exclude_page_headers_footers: bool = True
+    # Redact PII before HITL review
+    redact_pii: bool = Field(default=False, description="Redact PII (emails, phones, SSNs, credit cards) before HITL review")
+    use_ner_redaction: bool = Field(default=False, description="Use spaCy NER for contextual PII redaction (Names, Orgs) if spacy is installed")
+    ner_model: str = Field(default="en_core_web_sm", description="spaCy model to use for NER redaction")
     
     # Formula extraction mode: "full" (slow, best LaTeX), "fast" (Unicode text), "smart" (hybrid)
     formula_mode: str = "smart"
@@ -234,6 +240,13 @@ class ChunkingConfig(BaseModel):
     table_chunk_format: str = "row_record"  # "row_record" | "pipe"
     generate_schema_chunks: bool = True
     wide_table_col_threshold: int = 25
+    resolve_cross_references: bool = Field(default=True, description="Link 'see Figure 3' references to their target blocks")
+    use_semantic_chunking: bool = Field(default=False, description="Use embedding-based boundary detection for semantic splits")
+    semantic_threshold: float = Field(default=0.3, ge=0.0, le=1.0, description="Cosine similarity threshold below which a semantic split is forced")
+    semantic_model: str = Field(default="all-MiniLM-L6-v2", description="SentenceTransformer model for semantic chunking (default is fastest on CPU; use 'all-mpnet-base-v2' for higher accuracy)")
+    generate_summary_chunks: bool = Field(default=False, description="Auto-generate a 1-2 sentence summary chunk per section (requires LLM, runs as background task)")
+    summary_llm_provider: str = Field(default="gemini", description="LLM provider for summary generation")
+    summary_llm_model: Optional[str] = Field(default=None, description="LLM model for summary generation (None = provider default)")
 
 
 class Chunk(BaseModel):
@@ -249,6 +262,7 @@ class Chunk(BaseModel):
     equation_detected: bool = False
     image_path: Optional[str] = Field(default=None, description="Path to figure image if chunk_type == 'figure'")
     metadata: dict = Field(default_factory=dict)  # row_start, row_end, sheet, col_band
+    quality_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Chunk quality score (0=garbled, 1=perfect)")
 
 
 class JobRequest(BaseModel):

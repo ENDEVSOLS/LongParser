@@ -61,6 +61,7 @@ MANIFEST.in
 
 # IDE / Gemini agent
 .gemini/
+FEATURE_ROADMAP.md
 
 # Logs
 *.log

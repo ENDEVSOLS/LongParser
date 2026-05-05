@@ -65,6 +65,9 @@ config = ProcessingConfig(
     export_images=False,
     force_full_page_ocr=False,
     max_pages=None,
+    redact_pii=False,       # Enable PII redaction
+    use_ner_redaction=False, # Enable spaCy NER second pass
+    ner_model="en_core_web_sm",
 )
 ```
 
@@ -77,3 +80,6 @@ config = ProcessingConfig(
 | `export_images` | `bool` | `False` | Export figure images |
 | `force_full_page_ocr` | `bool` | `False` | OCR entire page |
 | `max_pages` | `int \| None` | `None` | Page cap |
+| `redact_pii` | `bool` | `False` | Enable PII redaction (Regex + Luhn) |
+| `use_ner_redaction` | `bool` | `False` | Enable spaCy NER for contextual PII |
+| `ner_model` | `str` | `"en_core_web_sm"` | spaCy model for NER |

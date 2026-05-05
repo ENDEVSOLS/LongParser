@@ -5,6 +5,25 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.5] — 2026-05-05
+
+### Added
+
+- **Semantic chunking** — `all-MiniLM-L6-v2` embedding-based boundary detection in `HybridChunker` (optional via `use_semantic_chunking`).
+- **Cross-reference resolution** — Highly efficient $O(N)$ resolution for explicit ("Figure 3") and implicit ("the table below") references via spatial proximity.
+- **Summary chunks** — Asynchronous ARQ background worker (`enrich_summaries_job`) to auto-generate LLM section summaries for hierarchical RAG retrieval.
+- **Chunk quality scorer** — Zero-ML, heuristic-based chunk scoring using block token confidences, Dictionary Word Coverage (`/usr/share/dict/words`), and fastText Lang-ID validation.
+- **PII redaction** — Hybrid approach using fast Regex+Luhn (Emails, Phones, SSNs, CCs, IPs) and optional spaCy NER (`en_core_web_sm`) for names, organizations, and locations. Preserves original values in secure block metadata for HITL.
+
+### Changed
+
+- Bumped `marker-pdf` version support in dependencies.
+- Added `ner` optional dependency group (`spacy>=3.7.0`) in `pyproject.toml`.
+- Expanded `ChunkingConfig` and `ProcessingConfig` with new semantic, summary, and PII toggle options.
+- Marked Phase 1 as officially complete in Roadmap.
+
+---
+
 ## [0.1.3] — 2026-04-13
 
 ### Fixed
@@ -74,7 +93,7 @@ for production RAG pipelines.
   via LangGraph `interrupt()` before embedding
 - **3-layer memory chat** — short-term turns + rolling summary + long-term facts,
   powered by LCEL chains
-- **Multi-provider LLM support** — OpenAI (`gpt-5.3`), Gemini (`gemini-2.5`),
+- **Multi-provider LLM support** — OpenAI (`gpt-4o`), Gemini (`gemini-2.0-flash`),
   Groq (`llama-3.3-70b-versatile`), OpenRouter
 - **Multi-backend vector stores** — Chroma, FAISS, Qdrant
 - **Async-first REST API** — FastAPI + Motor (MongoDB) + ARQ (Redis job queue)

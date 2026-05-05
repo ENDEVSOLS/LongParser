@@ -620,6 +620,10 @@ class HybridChunker:
         # --- Apply overlap ---
         all_chunks = self._apply_overlap(all_chunks)
 
+        # --- Quality score ---
+        from .quality_scorer import score_chunks
+        all_chunks = score_chunks(all_chunks, blocks)
+
         logger.info(f"[HybridChunker] Done — {len(all_chunks)} chunks produced")
         return all_chunks
 
@@ -749,11 +753,25 @@ class HybridChunker:
         Equations are kept with their surrounding context.
         """
         chunks: list[Chunk] = []
+        
+        # Pre-compute semantic boundaries if enabled
+        semantic_boundaries = set()
+        if self.config.use_semantic_chunking:
+            from .semantic_boundary import find_semantic_boundaries
+            semantic_boundaries = set(find_semantic_boundaries(
+                [b.text.strip() for b in blocks if b.text.strip()],
+                threshold=self.config.semantic_threshold,
+                model_name=self.config.semantic_model,
+            ))
+
         current_texts: list[str] = []
         current_ids: list[str] = []
         current_pages: set[int] = set()
         current_tokens = 0
         has_equation = False
+        
+        # We need an index over valid blocks to match semantic_boundaries
+        block_idx = 0
 
         for block in blocks:
             text = block.text.strip()
@@ -761,10 +779,12 @@ class HybridChunker:
                 continue
 
             block_tokens = _count_tokens(text)
-
-            # If adding this block would exceed the limit, flush
-            if (current_tokens + block_tokens > self.config.max_tokens
-                    and current_texts):
+            
+            # Flush condition: Token limit reached OR semantic boundary hit
+            hit_limit = current_tokens + block_tokens > self.config.max_tokens
+            hit_semantic = block_idx in semantic_boundaries
+            
+            if (hit_limit or hit_semantic) and current_texts:
                 
                 carry_text = None
                 carry_id = None
@@ -811,6 +831,8 @@ class HybridChunker:
 
             if block.type == BlockType.EQUATION:
                 has_equation = True
+                
+            block_idx += 1
 
         # Flush remaining
         if current_texts:

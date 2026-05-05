@@ -5,6 +5,25 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.5] — 2026-05-05
+
+### Added
+
+- **Semantic chunking** — `all-MiniLM-L6-v2` embedding-based boundary detection in `HybridChunker` (optional via `use_semantic_chunking`).
+- **Cross-reference resolution** — Highly efficient $O(N)$ resolution for explicit ("Figure 3") and implicit ("the table below") references via spatial proximity.
+- **Summary chunks** — Asynchronous ARQ background worker (`enrich_summaries_job`) to auto-generate LLM section summaries for hierarchical RAG retrieval.
+- **Chunk quality scorer** — Zero-ML, heuristic-based chunk scoring using block token confidences, Dictionary Word Coverage (`/usr/share/dict/words`), and fastText Lang-ID validation.
+- **PII redaction** — Hybrid approach using fast Regex+Luhn (Emails, Phones, SSNs, CCs, IPs) and optional spaCy NER (`en_core_web_sm`) for names, organizations, and locations. Preserves original values in secure block metadata for HITL.
+
+### Changed
+
+- Bumped `marker-pdf` version support in dependencies.
+- Added `ner` optional dependency group (`spacy>=3.7.0`) in `pyproject.toml`.
+- Expanded `ChunkingConfig` and `ProcessingConfig` with new semantic, summary, and PII toggle options.
+- Marked Phase 1 as officially complete in Roadmap.
+
+---
+
 ## [0.1.3] — 2026-04-13
 
 ### Fixed

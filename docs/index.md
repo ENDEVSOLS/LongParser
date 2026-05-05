@@ -37,6 +37,11 @@ Most RAG pipelines fail at the data layer. Hallucinations, missed tables, garble
 |---|---|
 | Multi-format extraction | PDF, DOCX, PPTX, XLSX, CSV |
 | Hybrid chunking (6 strategies) | ✅ |
+| Semantic chunking (embedding-based) | ✅ |
+| Cross-referencing & linking | ✅ |
+| Quality scoring (Zero-ML heuristics) | ✅ |
+| PII Redaction (Regex + spaCy NER) | ✅ |
+| Summary chunks generation | ✅ |
 | HITL review workflow | ✅ |
 | 3-layer memory chat | ✅ |
 | Built-in citation validation | ✅ |

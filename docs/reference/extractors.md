@@ -70,3 +70,31 @@ latex = ocr.recognize(pil_image)  # Returns LaTeX string
 
 !!! note
     Requires `pip install "longparser[latex-ocr]"` (`pix2tex`).
+
+## MarkerExtractor
+
+High-fidelity Markdown extractor for complex academic PDFs using `marker-pdf`.
+
+```python
+from longparser.extractors.marker_extractor import MarkerExtractor
+
+extractor = MarkerExtractor()
+doc = extractor.extract("academic_paper.pdf", ProcessingConfig())
+```
+
+!!! note
+    Requires `pip install "longparser[marker]"` (`marker-pdf`).
+
+## PyMuPDFExtractor
+
+Lightweight, fast alternative for speed-critical pipelines (10× faster than Docling for simple PDFs).
+
+```python
+from longparser.extractors.pymupdf_extractor import PyMuPDFExtractor
+
+extractor = PyMuPDFExtractor()
+doc = extractor.extract("simple_report.pdf", ProcessingConfig())
+```
+
+!!! warning
+    PyMuPDF4LLM is licensed under AGPL. It is only loaded when explicitly requested.

@@ -36,8 +36,13 @@
 
 | Feature | Detail |
 |---------|--------|
-| **Multi-format extraction** | PDF, DOCX, PPTX, XLSX, CSV via Docling |
+| **Multi-format extraction** | PDF, DOCX, PPTX, XLSX, CSV via Docling & Marker |
 | **Hybrid chunking** | Token-aware, heading-hierarchy-aware, table-aware |
+| **Semantic chunking** | Embedding-based boundaries using `all-MiniLM-L6-v2` |
+| **Cross-referencing** | Deterministic linking of explicit and implicit charts/figures |
+| **Quality scoring** | Zero-ML heuristic scoring with dictionary & fastText validation |
+| **PII redaction** | Hybrid Regex + NER (spaCy) redaction with secure HITL preservation |
+| **Summary chunks** | Async ARQ worker generating hierarchical LLM section summaries |
 | **HITL review** | Human-in-the-Loop block & chunk editing before embedding |
 | **LangGraph HITL** | `approve / edit / reject` workflow with LangGraph `interrupt()` and MongoDB checkpointer |
 | **3-layer memory** | Short-term turns + rolling summary + long-term facts |

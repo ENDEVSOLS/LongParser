@@ -58,6 +58,9 @@ config = ProcessingConfig(
     formula_ocr=True,
     export_images=False,
     max_pages=None,             # None = all pages
+    redact_pii=False,           # Enable fast Regex/Luhn PII redaction
+    use_ner_redaction=False,    # Enable spaCy NER for contextual PII
+    ner_model="en_core_web_sm", # Model to use if use_ner_redaction is True
 )
 ```
 
@@ -74,5 +77,10 @@ config = ChunkingConfig(
     generate_schema_chunks=True,    # table schema chunks
     table_chunk_format="row_record", # pipe | row_record
     wide_table_col_threshold=15,
+    use_semantic_chunking=False,    # Split at semantic shifts
+    semantic_threshold=0.3,         # Cosine similarity threshold
+    semantic_model="all-MiniLM-L6-v2", # Model for semantic chunking
+    resolve_cross_references=True,  # Resolve explicit & implicit refs
+    generate_summary_chunks=False,  # Use LLM to summarize sections
 )
 ```

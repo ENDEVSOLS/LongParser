@@ -109,6 +109,17 @@ async def extract_job(ctx: dict, tenant_id: str, job_id: str, file_path: str) ->
         logger.info(
             f"[Worker] Job {job_id} done: {block_count} blocks, {chunk_count} chunks"
         )
+        
+        # Auto-enqueue summary enrichment if enabled
+        import os
+        if os.getenv("LONGPARSER_GENERATE_SUMMARIES", "false").lower() in ("true", "1"):
+            from arq.jobs import Job
+            await ctx["redis"].enqueue_job(
+                "enrich_summaries_job", tenant_id, job_id,
+                _job_id=f"summary-{job_id}",
+            )
+            logger.info(f"[Worker] Enqueued summary enrichment for job {job_id}")
+
         return {"status": "ready_for_review", "blocks": block_count, "chunks": chunk_count}
 
     except Exception as e:
@@ -243,6 +254,46 @@ async def embed_job(
     finally:
         await db.close()
 
+
+async def enrich_summaries_job(
+    ctx: dict, tenant_id: str, job_id: str,
+    provider: str = "gemini", model: str | None = None,
+) -> dict:
+    """Generate summary chunks for each document section.
+
+    Runs after extract_job completes. Loads chunks from MongoDB,
+    groups by section_path, calls LLM for 1-2 sentence summaries,
+    and upserts new summary chunks back into MongoDB.
+    """
+    from .db import Database
+    from ..pipeline.summary_enricher import generate_summary_chunks
+
+    db = Database()
+    try:
+        job = await db.get_job(tenant_id, job_id)
+        if not job or job["status"] == "cancelled":
+            return {"status": "cancelled"}
+
+        summary_chunks = await generate_summary_chunks(
+            db, tenant_id, job_id, provider=provider, model=model,
+        )
+
+        # Upsert summary chunks into MongoDB
+        for chunk_doc in summary_chunks:
+            await db.upsert_chunk(tenant_id, job_id, chunk_doc)
+
+        await db.update_job(tenant_id, job_id, {
+            "progress.summary_chunks": len(summary_chunks),
+        })
+
+        logger.info(f"[Worker] Generated {len(summary_chunks)} summary chunks for job {job_id}")
+        return {"status": "enriched", "summary_chunks": len(summary_chunks)}
+
+    except Exception as e:
+        logger.exception(f"[Worker] Summary enrichment failed for job {job_id}: {e}")
+        return {"error": str(e)}
+    finally:
+        await db.close()
 
 # ---------------------------------------------------------------------------
 # Chat Background Tasks
@@ -446,6 +497,7 @@ class WorkerSettings:
     functions = [
         extract_job,
         embed_job,
+        enrich_summaries_job,
         summarize_session,
         extract_facts,
         purge_expired_sessions,

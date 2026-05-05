@@ -85,6 +85,12 @@ class PipelineOrchestrator:
             self._backend_name = "pymupdf"
             logger.info("Pipeline initialized with PyMuPDF4LLM backend (CPU-native, fast)")
 
+        elif backend == "marker":
+            from ..extractors.marker_extractor import MarkerExtractor
+            self.extractor = MarkerExtractor()
+            self._backend_name = "marker"
+            logger.info("Pipeline initialized with Marker backend")
+
         elif backend == "auto":
             # Auto mode: start with Docling (safe default), route at process time
             self.extractor = DoclingExtractor(
@@ -212,6 +218,16 @@ class PipelineOrchestrator:
 
         # Extract document
         document, meta = extractor.extract(file_path, config)
+
+        # Apply PII redaction before anything else
+        if config.redact_pii:
+            from .pii_redactor import redact_document
+            document, pii_report = redact_document(
+                document, 
+                use_ner=self._config.use_ner_redaction,
+                ner_model=self._config.ner_model
+            )
+            logger.info("PII Redaction Report: %s", pii_report.summary())
 
         # Inject language detection results into metadata
         if self._detected_lang:
@@ -367,6 +383,12 @@ class PipelineOrchestrator:
         chunker = HybridChunker(config or ChunkingConfig())
         all_blocks = result.document.all_blocks
         chunks = chunker.chunk(all_blocks)
+        
+        # Apply cross-reference resolution
+        if config is None or getattr(config, "resolve_cross_references", True):
+            from .cross_reference import resolve_cross_references
+            chunks = resolve_cross_references(result.document, chunks)
+            
         result.chunks = chunks
         return chunks
 

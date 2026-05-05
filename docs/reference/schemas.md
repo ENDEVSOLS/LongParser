@@ -44,12 +44,13 @@ class Chunk:
     chunk_id: str
     text: str
     token_count: int
-    chunk_type: str          # section | table | table_schema | list | equation
+    chunk_type: str          # section | table | table_schema | list | equation | summary
     section_path: list[str]
     page_numbers: list[int]
     block_ids: list[str]     # source block IDs for traceability
-    metadata: dict
+    metadata: dict           # cross_references, pii_redactions, etc.
     equation_detected: bool
+    quality_score: float | None  # 0.0–1.0 heuristic quality score
 ```
 
 ## BlockType
@@ -81,6 +82,11 @@ class ChunkingConfig:
     table_chunk_format: str = "row_record"   # pipe | row_record
     wide_table_col_threshold: int = 15
     min_chunk_tokens: int = 20
+    use_semantic_chunking: bool = False       # Embedding-based boundary detection
+    semantic_threshold: float = 0.3          # Cosine similarity threshold
+    semantic_model: str = "all-MiniLM-L6-v2" # Sentence-transformer model
+    resolve_cross_references: bool = True    # Link Figure/Table/Section refs
+    generate_summary_chunks: bool = False    # LLM-generated section summaries
 ```
 
 ## Provenance

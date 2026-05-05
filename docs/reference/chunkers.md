@@ -54,3 +54,8 @@ chunks: list[Chunk] = chunker.chunk(doc.blocks)
 | `table_chunk_format` | `"row_record"` | `pipe` or `row_record` |
 | `wide_table_col_threshold` | `15` | Split columns into bands above this |
 | `min_chunk_tokens` | `20` | Merge chunks smaller than this |
+| `use_semantic_chunking` | `False` | Embedding-based topic boundary detection |
+| `semantic_threshold` | `0.3` | Cosine similarity threshold for splits |
+| `semantic_model` | `"all-MiniLM-L6-v2"` | Sentence-transformer model |
+| `resolve_cross_references` | `True` | Link Figure/Table/Section references |
+| `generate_summary_chunks` | `False` | LLM-generated section summaries |
