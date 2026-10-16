@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import threading
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +35,12 @@ class EmbeddingEngine:
         self,
         provider: str = "huggingface",
         model_name: str = "BAAI/bge-base-en-v1.5",
-        dimensions: Optional[int] = None,
+        dimensions: int | None = None,
     ) -> None:
         self.provider = provider.lower()
         self.model_name = model_name
         self.configured_dimensions = dimensions
-        self._dim: Optional[int] = dimensions
+        self._dim: int | None = dimensions
 
         # Provider-specific configurations
         self._gemini_doc_task = "RETRIEVAL_DOCUMENT"

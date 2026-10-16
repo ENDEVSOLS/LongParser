@@ -1,0 +1,26 @@
+[
+  {
+    "id": "identical_control",
+    "texts": ["Solar panels convert sunlight into electricity.", "Solar panels convert sunlight into electricity.", "Solar panels convert sunlight into electricity."],
+    "boundaries": [],
+    "rationale": "Identical neighboring text has no topic change."
+  },
+  {
+    "id": "astronomy_to_baking",
+    "texts": ["The planets in our solar system orbit around the Sun.", "Our solar system contains planets that revolve around the Sun.", "To bake a chocolate cake, mix flour, eggs, sugar and cocoa powder."],
+    "boundaries": [2],
+    "rationale": "An astronomy paraphrase is followed by a baking instruction."
+  },
+  {
+    "id": "cooking_to_networks",
+    "texts": ["Boil pasta in salted water until tender, then drain it.", "Cook the pasta in boiling salted water and drain it when tender.", "A network firewall filters incoming traffic using security rules."],
+    "boundaries": [2],
+    "rationale": "A cooking paraphrase is followed by computer network security."
+  },
+  {
+    "id": "gardening_to_finance",
+    "texts": ["Tomato plants need sunlight, regular watering and fertile soil.", "Grow tomatoes in fertile soil with plenty of sun and regular water.", "Compound interest increases a savings balance by earning interest on earlier interest."],
+    "boundaries": [2],
+    "rationale": "A gardening paraphrase is followed by a finance definition."
+  }
+]

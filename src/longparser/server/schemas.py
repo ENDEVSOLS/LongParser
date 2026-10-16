@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
 from ..schemas import BlockType
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -61,14 +59,14 @@ class Revision(BaseModel):
     revision_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     entity_type: str  # "block" | "chunk"
     entity_id: str
-    previous_revision_id: Optional[str] = None
+    previous_revision_id: str | None = None
     action: ReviewStatus
     original_text: str
-    edited_text: Optional[str] = None
-    edited_type: Optional[BlockType] = None
+    edited_text: str | None = None
+    edited_type: BlockType | None = None
     reviewer_id: str = ""
     reviewer_note: str = ""
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ---------------------------------------------------------------------------
@@ -78,8 +76,8 @@ class Revision(BaseModel):
 class BlockReviewUpdate(BaseModel):
     """Request body for PATCH /jobs/{id}/blocks/{bid}."""
     status: ReviewStatus
-    edited_text: Optional[str] = None
-    edited_type: Optional[BlockType] = None
+    edited_text: str | None = None
+    edited_type: BlockType | None = None
     reviewer_note: str = ""
     version: int  # optimistic locking
 
@@ -87,7 +85,7 @@ class BlockReviewUpdate(BaseModel):
 class ChunkReviewUpdate(BaseModel):
     """Request body for PATCH /jobs/{id}/chunks/{cid}."""
     status: ReviewStatus
-    edited_text: Optional[str] = None
+    edited_text: str | None = None
     reviewer_note: str = ""
     version: int  # optimistic locking
 
@@ -108,7 +106,7 @@ class EmbedRequest(BaseModel):
     vector_db: str = Field(
         default_factory=lambda: os.getenv("LONGPARSER_VECTOR_DB", "chroma")
     )  # "chroma" | "faiss" | "qdrant"
-    collection_name: Optional[str] = None
+    collection_name: str | None = None
 
 
 class SearchRequest(BaseModel):
@@ -116,7 +114,7 @@ class SearchRequest(BaseModel):
     query: str
     job_id: str
     top_k: int = 5
-    index_version: Optional[str] = None  # defaults to latest
+    index_version: str | None = None  # defaults to latest
     filters: dict = Field(default_factory=dict)
 
 
@@ -144,8 +142,8 @@ class JobResponse(BaseModel):
     total_chunks: int = 0
     review_progress: ReviewProgress = Field(default_factory=ReviewProgress)
     created_at: datetime
-    finalized_at: Optional[datetime] = None
-    error: Optional[str] = None
+    finalized_at: datetime | None = None
+    error: str | None = None
 
 
 class JobListResponse(BaseModel):
@@ -160,12 +158,12 @@ class BlockResponse(BaseModel):
     type: BlockType
     text: str
     order_index: int = 0
-    heading_level: Optional[int] = None
+    heading_level: int | None = None
     indent_level: int = 0
     hierarchy_path: list[str] = Field(default_factory=list)
     page_number: int = 0
     review_status: ReviewStatus = ReviewStatus.PENDING
-    current_revision_id: Optional[str] = None
+    current_revision_id: str | None = None
     version: int = 1
 
 
@@ -179,7 +177,7 @@ class ChunkResponse(BaseModel):
     page_numbers: list[int] = Field(default_factory=list)
     block_ids: list[str] = Field(default_factory=list)
     review_status: ReviewStatus = ReviewStatus.PENDING
-    current_revision_id: Optional[str] = None
+    current_revision_id: str | None = None
     version: int = 1
 
 

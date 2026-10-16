@@ -38,15 +38,23 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import uuid
 from pathlib import Path
-from typing import Optional, List, Tuple
 
 from ..schemas import (
-    Document, Page, Block, Table, TableCell,
-    BlockType, ExtractorType, ProcessingConfig,
-    BoundingBox, Provenance, Confidence, BlockFlags,
-    DocumentMetadata, PageProfile, ExtractionMetadata,
+    Block,
+    BlockType,
+    BoundingBox,
+    Confidence,
+    Document,
+    DocumentMetadata,
+    ExtractionMetadata,
+    ExtractorType,
+    Page,
+    PageProfile,
+    ProcessingConfig,
+    Provenance,
+    Table,
+    TableCell,
 )
 from .base import BaseExtractor
 
@@ -61,7 +69,7 @@ def _require_pymupdf():
     try:
         import pymupdf4llm
         return pymupdf4llm
-    except ImportError:
+    except ImportError as err:
         raise ImportError(
             "\n"
             "╔══════════════════════════════════════════════════════════╗\n"
@@ -76,7 +84,7 @@ def _require_pymupdf():
             "║  For commercial use without AGPL obligations, purchase ║\n"
             "║  a license from https://artifex.com                    ║\n"
             "╚══════════════════════════════════════════════════════════╝\n"
-        )
+        ) from err
 
 
 def _require_pymupdf_fitz():
@@ -88,11 +96,11 @@ def _require_pymupdf_fitz():
         try:
             import fitz
             return fitz
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "PyMuPDF (fitz) is required for the pymupdf backend. "
                 "Install with: pip install 'longparser[pymupdf]'"
-            )
+            ) from err
 
 
 class PyMuPDFExtractor(BaseExtractor):
@@ -125,8 +133,8 @@ class PyMuPDFExtractor(BaseExtractor):
         self,
         file_path: Path,
         config: ProcessingConfig,
-        page_numbers: Optional[List[int]] = None,
-    ) -> Tuple[Document, ExtractionMetadata]:
+        page_numbers: list[int] | None = None,
+    ) -> tuple[Document, ExtractionMetadata]:
         """Extract a PDF using PyMuPDF4LLM.
 
         Parameters
@@ -197,6 +205,34 @@ class PyMuPDFExtractor(BaseExtractor):
         )
 
         return document, meta
+
+    def extract_page(
+        self,
+        file_path: Path,
+        page_number: int,
+        config: ProcessingConfig,
+    ) -> Page:
+        """Extract the document and return one page with its original provenance.
+
+        Args:
+            file_path: PDF document to extract.
+            page_number: Zero-based index of the requested page.
+            config: Processing options passed to whole-document extraction.
+
+        Returns:
+            The selected Page with its original one-based page number,
+            dimensions and block source references.
+
+        Raises:
+            ValueError: If the requested page is not present in the document.
+
+        This method converts the whole document before selecting the page.
+        """
+        document, _ = self.extract(file_path, config)
+        for page in document.pages:
+            if page.page_number == page_number + 1:
+                return page
+        raise ValueError(f"Page {page_number} not found in {file_path}")
 
     def _markdown_to_document(
         self,
@@ -376,8 +412,8 @@ class PyMuPDFExtractor(BaseExtractor):
         order_index: int,
         page_no: int,
         file_path: Path,
-        heading_level: Optional[int] = None,
-        table: Optional[Table] = None,
+        heading_level: int | None = None,
+        table: Table | None = None,
     ) -> Block:
         """Create a Block with standard provenance."""
         return Block(

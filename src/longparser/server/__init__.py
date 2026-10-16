@@ -6,7 +6,6 @@ Start the server::
 
 Subpackages:
     - :mod:`~longparser.server.chat` — RAG chat engine, retriever, LangGraph HITL
-    - :mod:`~longparser.server.routers` — modular FastAPI route groups (future)
 
 Key modules:
     - :mod:`~longparser.server.app` — FastAPI application factory and all routes

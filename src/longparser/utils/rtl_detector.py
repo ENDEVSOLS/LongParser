@@ -1,8 +1,6 @@
 """RTL (Right-to-Left) language detection utility."""
 
 import re
-from typing import Optional
-
 
 # Unicode ranges for RTL scripts
 RTL_RANGES = [
@@ -54,7 +52,7 @@ def detect_rtl_language(text: str, threshold: float = 0.1) -> bool:
     return rtl_ratio >= threshold
 
 
-def detect_rtl_script(text: str) -> Optional[str]:
+def detect_rtl_script(text: str) -> str | None:
     """
     Detect the specific RTL script in text.
     

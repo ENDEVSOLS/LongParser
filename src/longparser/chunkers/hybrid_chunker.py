@@ -12,10 +12,9 @@ Combines 6 strategies:
 
 from __future__ import annotations
 
-import re
 import logging
+import re
 import unicodedata
-from typing import Optional
 
 from ..schemas import Block, BlockType, Chunk, ChunkingConfig
 
@@ -114,7 +113,7 @@ def _eq_pattern_hits(text: str) -> int:
     return sum(1 for pat in _EQ_PATTERNS if pat.search(text))
 
 
-def _is_equation_candidate(block: Block, prev_block: Optional[Block] = None) -> bool:
+def _is_equation_candidate(block: Block, prev_block: Block | None = None) -> bool:
     """
     Determine if a paragraph block should be re-tagged as an equation.
 
@@ -339,7 +338,7 @@ def _generate_schema_chunk(
     # Sample rows (first 3–5)
     sample_count = min(5, n_data)
     sample_rows = []
-    for i, r_idx in enumerate(data_row_indices[:sample_count]):
+    for _i, r_idx in enumerate(data_row_indices[:sample_count]):
         row_data = grid.get(r_idx, {})
         parts = [f"{col_names[c]}={row_data.get(c, '')}" for c in range(n_cols)]
         sample_rows.append(f"  Row {r_idx}: " + "; ".join(parts))
@@ -408,7 +407,7 @@ def _chunk_table(block: Block, config: ChunkingConfig) -> list[Chunk]:
     
     # Data rows = all rows not in header
     header_set = set(header_rows)
-    data_row_indices = sorted(r for r in grid.keys() if r not in header_set)
+    data_row_indices = sorted(r for r in grid if r not in header_set)
     
     # Fix E + Gap #5: Schema chunk
     if config.generate_schema_chunks and data_row_indices:
@@ -431,14 +430,12 @@ def _chunk_table(block: Block, config: ChunkingConfig) -> list[Chunk]:
         bands = [list(range(n_cols))]  # Single band with all columns
     
     # Process each band
-    for band_idx, band_cols in enumerate(bands):
+    for _band_idx, band_cols in enumerate(bands):
         band_col_names = [col_names[c] for c in band_cols]
         
         # Build header text for pipe format
-        if config.table_chunk_format == "pipe":
-            header_text = " | ".join(band_col_names)
-        else:
-            header_text = ""  # Not needed for row_record; names are inline
+        # Row records contain names inline and do not need a header.
+        header_text = " | ".join(band_col_names) if config.table_chunk_format == "pipe" else ""
         
         # Fix C: Token-aware row batching
         current_row_texts: list[str] = []
@@ -446,7 +443,8 @@ def _chunk_table(block: Block, config: ChunkingConfig) -> list[Chunk]:
         chunk_row_start = data_row_indices[0] if data_row_indices else 0
         
         for r_idx in data_row_indices:
-            row_data = {c: grid.get(r_idx, {}).get(c, "") for c in band_cols}
+            row_data = {band_index: grid.get(r_idx, {}).get(column, "")
+                        for band_index, column in enumerate(band_cols)}
             
             # Fix D: Render based on format
             if config.table_chunk_format == "row_record":
@@ -562,7 +560,7 @@ class HybridChunker:
         chunks = chunker.chunk(blocks)
     """
 
-    def __init__(self, config: Optional[ChunkingConfig] = None):
+    def __init__(self, config: ChunkingConfig | None = None):
         self.config = config or ChunkingConfig()
 
     def chunk(self, blocks: list[Block]) -> list[Chunk]:
@@ -764,6 +762,7 @@ class HybridChunker:
                 model_name=self.config.semantic_model,
             ))
 
+        source_pages = {b.block_id: b.provenance.page_number for b in blocks}
         current_texts: list[str] = []
         current_ids: list[str] = []
         current_pages: set[int] = set()
@@ -795,6 +794,7 @@ class HybridChunker:
                 if block.type == BlockType.EQUATION and len(current_texts) > 0:
                     carry_text = current_texts.pop()
                     carry_id = current_ids.pop()
+                    current_pages = {source_pages[bid] for bid in current_ids}
                     carry_tokens = _count_tokens(carry_text)
                     current_tokens -= carry_tokens
                 
@@ -817,12 +817,11 @@ class HybridChunker:
                 current_tokens = 0
                 has_equation = False
                 
-                if carry_text:
+                if carry_text and carry_id is not None:
                     current_texts.append(carry_text)
                     current_ids.append(carry_id)
                     current_tokens += carry_tokens
-                    # Note: We assume the carried block is close enough to the next block 
-                    # that simply adding the next block's page will suffice for provenance.
+                    current_pages.add(source_pages[carry_id])
 
             current_texts.append(text)
             current_ids.append(block.block_id)

@@ -18,9 +18,9 @@
       <img src="https://static.pepy.tech/badge/longparser/month" alt="Monthly Downloads">
     </a>
     <a href="https://www.python.org/">
-      <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python">
+      <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python">
     </a>
-    <a href="LICENSE">
+    <a href="LICENSE-THIRD-PARTY.md">
       <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="MIT License">
     </a>
     <a href="https://endevsols.github.io/LongParser/">
@@ -32,16 +32,20 @@
 ---
 
 
+## Python support
+
+Python **3.11 or newer** is required. CI tests Python 3.11, 3.12 and 3.13. Python 3.10 support has been discontinued following its end of life; existing Python 3.10 users must upgrade for the upcoming release.
+
 ## Features
 
 | Feature | Detail |
 |---------|--------|
-| **Multi-format extraction** | PDF, DOCX, PPTX, XLSX, CSV via Docling & Marker |
+| **Multi-format extraction** | PDF, DOCX, PPTX, XLSX & CSV via Docling; optional PDF backends |
 | **Hybrid chunking** | Token-aware, heading-hierarchy-aware, table-aware |
 | **Semantic chunking** | Embedding-based boundaries using `all-MiniLM-L6-v2` |
 | **Cross-referencing** | Deterministic linking of explicit and implicit charts/figures |
 | **Quality scoring** | Zero-ML heuristic scoring with dictionary & fastText validation |
-| **PII redaction** | Hybrid Regex + NER (spaCy) redaction with secure HITL preservation |
+| **PII redaction** | Optional Regex + NER (spaCy) redaction with originals retained for HITL review |
 | **Summary chunks** | Async ARQ worker generating hierarchical LLM section summaries |
 | **HITL review** | Human-in-the-Loop block & chunk editing before embedding |
 | **LangGraph HITL** | `approve / edit / reject` workflow with LangGraph `interrupt()` and MongoDB checkpointer |
@@ -50,27 +54,29 @@
 | **Multi-backend vectors** | Chroma, FAISS, Qdrant |
 | **Production-ready API** | FastAPI + Motor (MongoDB) + ARQ + Redis (Queue & Rate Limiting) |
 | **Enterprise Security** | Tenant isolation, Role-Based Access Control (RBAC), and CORS |
-| **LangChain adapters** | Drop-in `BaseRetriever` and LlamaIndex `QueryEngine` |
-| **Privacy-first** | All processing runs locally; no data leaves your infra |
+| **Integration adapters** | LangChain loader & retriever and LlamaIndex reader |
+| **Privacy-first** | Local extraction and embeddings; hosted LLM/embedding providers receive content sent to them |
 
 ---
 
 ## Installation
 
-### Quick install (recommended)
+### GPU installation
 
 ```bash
 pip install "longparser[gpu]"
 ```
 
-Includes everything — server, embeddings, vector DB, OCR, LangChain, LlamaIndex.
-Works on CPU machines too; torch just runs in CPU mode automatically.
+Includes the server, embeddings, FAISS GPU, Chroma, equation OCR, PPTX helpers, LangChain and LlamaIndex. Qdrant and optional extraction backends are separate extras.
+For CPU machines, use the CPU-only installation below.
 
-### Core SDK only (no server, no torch)
+### Core SDK only (no server extras)
 
 ```bash
 pip install longparser
 ```
+
+Includes Docling and its dependencies, which may include PyTorch. The default PDF OCR path requires Tesseract and the appropriate language data.
 
 ### Pick only what you need
 
@@ -78,7 +84,7 @@ pip install longparser
 |---|---|
 | `server` | FastAPI + MongoDB + Redis + LangChain chat |
 | `embeddings-gpu` | `sentence-transformers` (GPU) |
-| `embeddings-cpu` | `sentence-transformers` (CPU-only torch) |
+| `embeddings-cpu` | `sentence-transformers` (preinstall CPU-only torch) |
 | `faiss-gpu` | FAISS GPU vector store |
 | `faiss-cpu` | FAISS CPU vector store |
 | `chroma` | ChromaDB |
@@ -87,8 +93,8 @@ pip install longparser
 | `latex-ocr-cpu` | `pix2tex` equation OCR (CPU) |
 | `langchain` | LangChain core adapter |
 | `llamaindex` | LlamaIndex reader adapter |
-| `gpu` | **All of the above** — one command |
-| `cpu` | **All of the above** — CPU-only torch |
+| `gpu` | Server, GPU embeddings/FAISS/OCR, Chroma, PPTX and adapters |
+| `cpu` | Corresponding CPU bundle; preinstall CPU-only torch |
 
 ### Advanced: CPU-only install (save ~1.8 GB)
 
@@ -110,14 +116,16 @@ pip install "longparser[cpu]"
 ### Python SDK
 
 ```python
-from longparser import DocumentPipeline, ProcessingConfig
+from longparser import ChunkingConfig, DocumentPipeline, ProcessingConfig
 
 pipeline = DocumentPipeline(ProcessingConfig())
 result = pipeline.process_file("document.pdf")
+pipeline.chunk(result, ChunkingConfig())
 
 print(f"Pages: {result.document.metadata.total_pages}")
 print(f"Chunks: {len(result.chunks)}")
-print(result.chunks[0].text)
+if result.chunks:
+    print(result.chunks[0].text)
 ```
 
 ### REST API
@@ -126,21 +134,18 @@ print(result.chunks[0].text)
 # 1. Copy and edit configuration
 cp .env.example .env
 
-# 2. Start services (MongoDB + Redis)
-docker-compose up -d mongo redis
+# 2. Start the API, background worker, MongoDB and Redis
+docker compose up -d --build
 
-# 3. Start the API
-uv run uvicorn longparser.server.app:app --reload --port 8000
-
-# 4. Upload a document
+# 3. Upload a document
 curl -X POST http://localhost:8000/jobs \
   -H "X-API-Key: your-key" \
   -F "file=@document.pdf"
 
-# 5. Check job status
+# 4. Check job status; wait for ready_for_review
 curl http://localhost:8000/jobs/{job_id} -H "X-API-Key: your-key"
 
-# 6. Finalize and embed
+# 5. Finalize and enqueue embedding
 curl -X POST http://localhost:8000/jobs/{job_id}/finalize \
   -H "X-API-Key: your-key" \
   -H "Content-Type: application/json" \
@@ -151,7 +156,7 @@ curl -X POST http://localhost:8000/jobs/{job_id}/embed \
   -H "Content-Type: application/json" \
   -d '{"provider": "huggingface", "model": "BAAI/bge-base-en-v1.5", "vector_db": "chroma"}'
 
-# 7. Chat with the document
+# 6. After job status is indexed, chat with the document
 curl -X POST http://localhost:8000/chat/sessions \
   -H "X-API-Key: your-key" \
   -H "Content-Type: application/json" \
@@ -168,7 +173,7 @@ curl -X POST http://localhost:8000/chat \
 ## Architecture
 
 ```
-Document → Extract → Validate → HITL Review → Chunk → Embed → Index
+Document → Extract → Validate → Chunk → HITL Review → Embed → Index
                                                               ↓
                                              Chat → RAG → LLM → Answer
 ```
@@ -177,8 +182,8 @@ Document → Extract → Validate → HITL Review → Chunk → Embed → Index
 
 1. **Extract** — Docling converts PDF/DOCX/etc. into structured `Block` objects
 2. **Validate** — Per-page confidence scoring and RTL detection
-3. **HITL Review** — Human approves/edits/rejects blocks and chunks via the API
-4. **Chunk** — `HybridChunker` builds token-aware RAG chunks with section hierarchy
+3. **Chunk** — `HybridChunker` builds token-aware RAG chunks with section hierarchy
+4. **HITL Review** — Human approves/edits/rejects blocks and chunks via the API
 5. **Embed** — Embedding engine (HuggingFace / OpenAI) vectors stored in Chroma/FAISS/Qdrant
 6. **Chat** — LCEL chain with 3-layer memory and citation validation
 
@@ -246,14 +251,15 @@ Copy `.env.example` to `.env` and set:
 | `LONGPARSER_VECTOR_DB` | `chroma` | Vector store backend |
 | `LONGPARSER_CORS_ORIGINS` | `*` | Allowed CORS origins |
 | `LONGPARSER_RATE_LIMIT` | `60` | Max RPM per tenant |
-| `LONGPARSER_ADMIN_KEYS` | (empty) | Comma-separated admin API keys |
+| `LONGPARSER_ADMIN_KEYS` | (empty) | Comma-separated admin API keys; if empty, all users are admins |
 
 ---
 
 ## Running with Docker
 
 ```bash
-docker-compose up
+cp .env.example .env
+docker compose up --build
 ```
 
 API available at `http://localhost:8000` · Docs at `http://localhost:8000/docs`
@@ -263,15 +269,23 @@ API available at `http://localhost:8000` · Docs at `http://localhost:8000/docs`
 ## Testing
 
 ```bash
-# Install dev dependencies
-uv sync --extra dev
+# Install development and server dependencies
+uv sync --extra dev --extra server
 
 # Run unit tests
 uv run pytest tests/unit/ -v
 
 # Run with coverage
-uv run pytest tests/ --cov=src/longparser --cov-report=term-missing
+uv run pytest tests/ --cov=longparser --cov-report=term-missing
+
+# Check configured lint rules
+uv run ruff check .
+
+# Informational type checking
+uv run mypy src/longparser/
 ```
+
+Coverage includes all production modules with a 95% minimum. Mypy is non-blocking in CI. See [Testing documentation](docs/full-project-testing.md) for validation details.
 
 ---
 
@@ -285,4 +299,4 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## License
 
-[MIT](LICENSE) — Copyright © 2026 ENDEVSOLS
+MIT — Copyright © 2026 ENDEVSOLS. See [third-party licenses](LICENSE-THIRD-PARTY.md) for optional backend terms.

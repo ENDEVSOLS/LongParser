@@ -9,18 +9,17 @@ Supports multiple extraction backends:
 Language detection runs before OCR to set the correct Tesseract language.
 """
 
-from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Optional, List
-import time
-import logging
 import json
+import logging
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
 
-from ..schemas import Document, ProcessingConfig, JobRequest, BlockType, ChunkingConfig, Chunk
+from ..chunkers import HybridChunker
 from ..extractors import DoclingExtractor
 from ..extractors.docling_extractor import HierarchyChunk
-from ..chunkers import HybridChunker
-from ..utils.lang_detect import detect_language, get_tesseract_langs, extract_sample_text
+from ..schemas import BlockType, Chunk, ChunkingConfig, Document, JobRequest, ProcessingConfig
+from ..utils.lang_detect import detect_language, extract_sample_text, get_tesseract_langs
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +28,9 @@ logger = logging.getLogger(__name__)
 class PipelineResult:
     """Pipeline execution result."""
     document: Document
-    hierarchy: List[HierarchyChunk]
+    hierarchy: list[HierarchyChunk]
     processing_time_seconds: float
-    chunks: List[Chunk] = field(default_factory=list)
+    chunks: list[Chunk] = field(default_factory=list)
     
     @property
     def total_blocks(self) -> int:
@@ -65,8 +64,8 @@ class PipelineOrchestrator:
     
     def __init__(
         self,
-        config: Optional[ProcessingConfig] = None,
-        tesseract_lang: List[str] = None,
+        config: ProcessingConfig | None = None,
+        tesseract_lang: list[str] = None,
         tessdata_path: str = None,
         force_full_page_ocr: bool = False,
     ):
@@ -147,7 +146,7 @@ class PipelineOrchestrator:
         # 4. Default
         return ["eng"]
 
-    def _auto_detect(self, file_path: Path) -> Optional[list[str]]:
+    def _auto_detect(self, file_path: Path) -> list[str] | None:
         """Run language detection and return Tesseract codes, or None."""
         sample = extract_sample_text(file_path)
         if not sample or len(sample.strip()) < 20:
@@ -180,7 +179,9 @@ class PipelineOrchestrator:
         if sample and len(sample.strip()) > 100:
             # Has text → native PDF → PyMuPDF is faster
             try:
-                from ..extractors.pymupdf_extractor import PyMuPDFExtractor
+                from ..extractors.pymupdf_extractor import (
+                    PyMuPDFExtractor,  # noqa: F401 — availability check
+                )
                 return True
             except ImportError:
                 # pymupdf4llm not installed — fall back to Docling
@@ -204,17 +205,20 @@ class PipelineOrchestrator:
         logger.info(f"Processing: {file_path.name}")
 
         # Auto-mode: decide backend per document
+        extractor = self.extractor
         if self._backend_name == "auto" and self._should_use_pymupdf(file_path):
             from ..extractors.pymupdf_extractor import PyMuPDFExtractor
-            extractor = PyMuPDFExtractor()
-            logger.info("Auto mode selected: PyMuPDF4LLM (native PDF detected)")
-        else:
-            extractor = self.extractor
+            try:
+                extractor = PyMuPDFExtractor()
+            except ImportError:
+                logger.debug("Auto mode: PyMuPDF dependency unavailable, using Docling")
+            else:
+                logger.info("Auto mode selected: PyMuPDF4LLM (native PDF detected)")
 
-            # Resolve languages for Docling backend
-            if isinstance(extractor, DoclingExtractor):
-                resolved_langs = self._resolve_languages(file_path, config)
-                extractor._languages = resolved_langs
+        # Resolve languages for Docling, including the missing-extra fallback.
+        if isinstance(extractor, DoclingExtractor):
+            resolved_langs = self._resolve_languages(file_path, config)
+            extractor._languages = resolved_langs
 
         # Extract document
         document, meta = extractor.extract(file_path, config)
@@ -252,7 +256,7 @@ class PipelineOrchestrator:
     def process_file(
         self,
         file_path: str | Path,
-        config: Optional[ProcessingConfig] = None,
+        config: ProcessingConfig | None = None,
     ) -> PipelineResult:
         """Convenience method to process a file directly."""
         request = JobRequest(
@@ -369,7 +373,7 @@ class PipelineOrchestrator:
         
         return created_files
 
-    def chunk(self, result: PipelineResult, config: Optional[ChunkingConfig] = None) -> List[Chunk]:
+    def chunk(self, result: PipelineResult, config: ChunkingConfig | None = None) -> list[Chunk]:
         """
         Run hybrid chunking on a pipeline result.
         
@@ -405,7 +409,7 @@ class PipelineOrchestrator:
         logger.info(f"Exported {len(result.chunks)} chunks to {chunks_path}")
         return chunks_path
 
-    def save_images(self, output_dir: Path) -> List[Path]:
+    def save_images(self, output_dir: Path) -> list[Path]:
         """Save extracted images."""
         return self.extractor.save_images(output_dir)
 

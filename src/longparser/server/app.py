@@ -13,21 +13,19 @@ try:
 except ImportError:
     pass
 
-from collections import defaultdict
 import hashlib
 import io
 import logging
 import os
 import shutil
+import time as _time
 import uuid
 import zipfile
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
-import time as _time
-import redis.asyncio as redis
 
+import redis.asyncio as redis
 from fastapi import (
     FastAPI,
     File,
@@ -40,6 +38,15 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from .chat.schemas import (
+    ChatConfig,
+    ChatRequest,
+    ChatResponse,
+    CreateSessionRequest,
+    HITLResumeRequest,
+    LLMAnswer,
+    SourceRef,
+)
 from .db import Database
 from .queue import ARQBackend
 from .schemas import (
@@ -53,21 +60,11 @@ from .schemas import (
     JobListResponse,
     JobResponse,
     JobStatus,
-    ReviewProgress,
     ReviewStatus,
     Revision,
     SearchRequest,
     SearchResponse,
     SearchResult,
-)
-from .chat.schemas import (
-    ChatConfig,
-    ChatRequest,
-    ChatResponse,
-    CreateSessionRequest,
-    HITLResumeRequest,
-    LLMAnswer,
-    SourceRef,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,7 +102,7 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown hooks."""
     await db.create_indexes()
     
-    from .chat.checkpointer import init_checkpointer, close_checkpointer
+    from .chat.checkpointer import close_checkpointer, init_checkpointer
     await init_checkpointer(
         mongo_uri=os.getenv("LONGPARSER_MONGO_URL", "mongodb://localhost:27017"),
         db_name=os.getenv("LONGPARSER_DB_NAME", "longparser"),
@@ -320,7 +317,7 @@ async def create_job(
 @app.get("/jobs", response_model=JobListResponse)
 async def list_jobs(
     x_api_key: str = Header(...),
-    status: Optional[str] = Query(None),
+    status: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
@@ -387,8 +384,8 @@ async def delete_job(job_id: str, x_api_key: str = Header(...)):
     index_versions = await db.list_index_versions(tenant_id, job_id)
     for iv in index_versions:
         try:
-            from .vectorstores import get_vector_store
             from .embeddings import EmbeddingEngine
+            from .vectorstores import get_vector_store
 
             # Rebuild engine to securely reconstruct fingerprint for deletion
             engine = EmbeddingEngine(
@@ -453,9 +450,9 @@ def _format_chunk(c: dict) -> ChunkResponse:
 async def list_blocks(
     job_id: str,
     x_api_key: str = Header(...),
-    status: Optional[str] = Query(None),
-    type: Optional[str] = Query(None),
-    page: Optional[int] = Query(None),
+    status: str | None = Query(None),
+    type: str | None = Query(None),
+    page: int | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -528,8 +525,8 @@ async def update_block(
 async def list_chunks(
     job_id: str,
     x_api_key: str = Header(...),
-    status: Optional[str] = Query(None),
-    chunk_type: Optional[str] = Query(None),
+    status: str | None = Query(None),
+    chunk_type: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -704,9 +701,8 @@ async def purge_chunk(
 
 async def _rechunk_job(tenant_id: str, job_id: str) -> int:
     """Re-chunk a job from current blocks. Returns new chunk count."""
-    from ..schemas import Block, Provenance, BoundingBox, Confidence
     from ..chunkers import HybridChunker
-    from ..schemas import ChunkingConfig
+    from ..schemas import Block, BoundingBox, ChunkingConfig, Confidence, Provenance
 
     blocks_data = await db.get_blocks(tenant_id, job_id)
     blocks = []
@@ -794,7 +790,7 @@ async def finalize_job(
 
     await db.update_job(tenant_id, job_id, {
         "status": "finalized",
-        "finalized_at": datetime.now(timezone.utc),
+        "finalized_at": datetime.now(UTC),
     })
 
     return {"status": "finalized", "job_id": job_id, "policy": body.finalize_policy.value}
@@ -933,9 +929,9 @@ async def search(body: SearchRequest, x_api_key: str = Header(...)):
     )
 
     filters = {
+        **body.filters,
         "tenant_id": tenant_id,
         "job_id": body.job_id,
-        **body.filters,
     }
     raw_results = store.search(query_embedding, top_k=body.top_k, filters=filters)
 
@@ -1130,18 +1126,16 @@ async def resume_chat(
         edited_answer=req.edited_answer,
     )
 
-    # If the answer was edited or approved, update the saved turn
-    if result.get("status") == "complete":
-        # Update the last turn's answer if edited
-        if req.action == "edit" and req.edited_answer:
-            await db.chat_turns.find_one_and_update(
-                {
-                    "tenant_id": tenant_id,
-                    "session_id": req.session_id,
-                },
-                {"$set": {"answer": req.edited_answer}},
-                sort=[("created_at", -1)],
-            )
+    # Update the last turn's answer after a completed edit.
+    if result.get("status") == "complete" and req.action == "edit" and req.edited_answer:
+        await db.chat_turns.find_one_and_update(
+            {
+                "tenant_id": tenant_id,
+                "session_id": req.session_id,
+            },
+            {"$set": {"answer": req.edited_answer}},
+            sort=[("created_at", -1)],
+        )
 
     sources = [SourceRef(**s) for s in result.get("sources", [])]
 
@@ -1162,4 +1156,3 @@ async def resume_chat(
 async def health():
     """Health check endpoint."""
     return {"status": "ok", "service": "longparser-api"}
-

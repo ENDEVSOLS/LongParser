@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 from ..schemas import Document
 
@@ -91,7 +90,7 @@ def redact_document(
     document: Document, 
     use_ner: bool = False, 
     ner_model: str = "en_core_web_sm"
-) -> Tuple[Document, RedactionReport]:
+) -> tuple[Document, RedactionReport]:
     """Redact PII from document blocks, preserving originals in metadata."""
     report = RedactionReport()
     nlp = _get_nlp(ner_model) if use_ner else None

@@ -8,17 +8,14 @@ import pytest
 # (docling, motor, etc.) that live behind the top-level __init__ lazy imports.
 from longparser.schemas import (
     Block,
-    BlockFlags,
     BlockType,
     BoundingBox,
-    Chunk,
     ChunkingConfig,
     Confidence,
+    ExtractorType,
     ProcessingConfig,
     Provenance,
-    ExtractorType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Schema helpers
@@ -100,3 +97,31 @@ def simple_block_list() -> list[Block]:
 def processing_config() -> ProcessingConfig:
     """Default processing config."""
     return ProcessingConfig()
+
+
+@pytest.fixture
+def memory_database(monkeypatch):
+    """Run the real Database interface against a controlled Motor boundary."""
+    import longparser.server.db as module
+    from tests.memory_mongo import MotorClient
+
+    client = MotorClient()
+    monkeypatch.setattr(module, "AsyncIOMotorClient", lambda *args, **kwargs: client)
+    return module.Database("mongodb://memory.test")
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-real-embeddings", action="store_true", default=False,
+        help="Run opt-in real embedding tests; requires the pinned local model snapshot.",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-real-embeddings"):
+        return
+    selected = [item for item in items if "real_embeddings" not in item.keywords]
+    deselected = [item for item in items if "real_embeddings" in item.keywords]
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected

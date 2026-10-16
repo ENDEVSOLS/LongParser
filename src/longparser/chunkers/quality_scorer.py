@@ -4,23 +4,22 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Dict, Set
 
 from ..schemas import Block, Chunk
 
 logger = logging.getLogger(__name__)
 
 # --- Lazy-loaded resources ---
-_english_words: Set[str] | None = None
+_english_words: set[str] | None = None
 
-def _get_english_words() -> Set[str]:
+def _get_english_words() -> set[str]:
     """Load standard OS dictionary for word coverage checks."""
     global _english_words
     if _english_words is None:
         _english_words = set()
         # Try common unix dictionary path
         try:
-            with open("/usr/share/dict/words", "r", encoding="utf-8") as f:
+            with open("/usr/share/dict/words", encoding="utf-8") as f:
                 _english_words = {line.strip().lower() for line in f}
             logger.info(f"Loaded {len(_english_words)} words for quality scoring")
         except Exception:
@@ -51,7 +50,7 @@ def score_chunks(chunks: list[Chunk], blocks: list[Block]) -> list[Chunk]:
         return chunks
 
     # Build block lookup for fast access
-    block_lookup: Dict[str, Block] = {b.block_id: b for b in blocks}
+    block_lookup: dict[str, Block] = {b.block_id: b for b in blocks}
 
     for chunk in chunks:
         chunk_blocks = [

@@ -93,6 +93,19 @@ nav:
     - Chunkers: reference/chunkers.md
     - Extractors: reference/extractors.md
   - Contributing: contributing.md
+  - Development Validation:
+    - Full Project Testing: full-project-testing.md
+    - Combined Review and Builds: combined-validation.md
+    - Coverage Policy: coverage-policy.md
+    - Chunking Tests: chunking-tests.md
+    - Pipeline Tests: pipeline-tests.md
+    - Extractor Tests: extractor-tests.md
+    - Repair Records:
+      - Equation Page References: issues/equation-page-provenance.md
+      - PyMuPDF Routing: issues/pymupdf-construction-and-auto-fallback.md
+      - Wide Table Columns: issues/wide-table-column-banding.md
+      - Search Scope: issues/search-filter-scope.md
+      - Docling Conversion State: issues/docling-conversion-state.md
   - Changelog: changelog.md
   - Security: security.md
 

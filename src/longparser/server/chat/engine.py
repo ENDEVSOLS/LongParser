@@ -20,13 +20,14 @@ Memory layers:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from .callbacks import LongParserCallbackHandler
+from .llm_chain import get_chat_model
+from .retriever import LongParserRetriever
 from .schemas import (
     ChatConfig,
     ChatRequest,
@@ -35,8 +36,6 @@ from .schemas import (
     SourceRef,
     Turn,
 )
-from .llm_chain import get_chat_model
-from .retriever import LongParserRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +194,7 @@ def validate_citations(
 class ChatEngine:
     """Core chat logic — ties together LangChain retriever, chain, memory, and DB."""
 
-    def __init__(self, db, queue, config: Optional[ChatConfig] = None):
+    def __init__(self, db, queue, config: ChatConfig | None = None):
         self.db = db
         self.queue = queue
         self.config = config or ChatConfig()

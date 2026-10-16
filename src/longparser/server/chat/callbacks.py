@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -25,7 +25,7 @@ class LongParserCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self.tenant_id = tenant_id
         self.session_id = session_id
-        self._llm_start_time: Optional[float] = None
+        self._llm_start_time: float | None = None
 
     def on_llm_start(
         self,

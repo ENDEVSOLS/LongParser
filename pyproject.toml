@@ -7,7 +7,7 @@ name = "longparser"
 version = "0.1.5"
 description = "Privacy-first document intelligence engine — converts PDFs, DOCX, PPTX, XLSX, and CSV into AI-ready Markdown + structured JSON for RAG pipelines."
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     {name = "ENDEVSOLS Team", email = "technology@endevsols.com"},
@@ -23,7 +23,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -211,11 +210,17 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/longparser/server/app.py" = ["B008"]  # FastAPI File()/Depends() declarations
+"src/longparser/schemas.py" = ["UP042"]  # Preserve public str/Enum formatting behavior.
+"src/longparser/server/schemas.py" = ["UP042"]
+"src/longparser/server/chat/schemas.py" = ["UP042"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["longparser"]
@@ -224,31 +229,26 @@ known-first-party = ["longparser"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
+markers = ["real_embeddings: opt-in CPU tests using a pinned local SentenceTransformer model"]
 addopts = "-v --tb=short"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 strict = false
 ignore_missing_imports = true
 warn_unused_ignores = true
 
 [tool.coverage.run]
+# Measure all production modules; optional/model paths stay visible when untested.
 source = ["src/longparser"]
-omit = [
-    "tests/*",
-    # These modules require heavy optional deps (server, langchain, docling GPU)
-    # not installed in the lightweight CI environment
-    "src/longparser/server/*",
-    "src/longparser/extractors/docling_extractor.py",
-    "src/longparser/extractors/latex_ocr.py",
-    "src/longparser/integrations/*",
-    "src/longparser/pipeline/*",
-]
 
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 5
+# Full-project tests now exceed 95% across all production modules on Python 3.13.
+# The default CI suite enforces 95%; full remote matrix validation remains pending.
+# Measurement scope and gate rationale: docs/coverage-policy.md.
+fail_under = 95
 
 # CPU-only PyTorch index — saves ~2.3 GB vs CUDA build
 [[tool.uv.index]]

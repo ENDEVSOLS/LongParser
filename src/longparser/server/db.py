@@ -7,20 +7,16 @@ materialized path hierarchy indexes.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from .schemas import (
-    JobStatus,
-    ReviewStatus,
     FinalizePolicy,
-    Revision,
-    JobResponse,
+    JobStatus,
     ReviewProgress,
-    BlockResponse,
-    ChunkResponse,
+    ReviewStatus,
+    Revision,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +29,7 @@ logger = logging.getLogger(__name__)
 class Database:
     """Async MongoDB interface for LongParser."""
 
-    def __init__(self, mongo_url: Optional[str] = None, db_name: str = "longparser"):
+    def __init__(self, mongo_url: str | None = None, db_name: str = "longparser"):
         import os
         if mongo_url is None:
             mongo_url = os.getenv("LONGPARSER_MONGO_URL", "mongodb://localhost:27017")
@@ -146,21 +142,21 @@ class Database:
             "total_blocks": 0,
             "total_chunks": 0,
             "progress": {"pages_done": 0, "blocks_saved": 0, "chunks_saved": 0, "embeddings_done": 0},
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
             "finalized_at": None,
             "error": None,
         }
         await self.jobs.insert_one(doc)
         return doc
 
-    async def get_job(self, tenant_id: str, job_id: str) -> Optional[dict]:
+    async def get_job(self, tenant_id: str, job_id: str) -> dict | None:
         """Get a job by tenant + job_id."""
         return await self.jobs.find_one(
             {"tenant_id": tenant_id, "job_id": job_id}, {"_id": 0}
         )
 
     async def list_jobs(
-        self, tenant_id: str, status: Optional[str] = None,
+        self, tenant_id: str, status: str | None = None,
         skip: int = 0, limit: int = 50
     ) -> tuple[list[dict], int]:
         """List jobs for a tenant with optional status filter."""
@@ -209,9 +205,9 @@ class Database:
 
     async def get_blocks(
         self, tenant_id: str, job_id: str,
-        status: Optional[str] = None,
-        block_type: Optional[str] = None,
-        page: Optional[int] = None,
+        status: str | None = None,
+        block_type: str | None = None,
+        page: int | None = None,
         skip: int = 0, limit: int = 100,
     ) -> list[dict]:
         """Get blocks with optional filters."""
@@ -228,10 +224,10 @@ class Database:
     async def update_block_review(
         self, tenant_id: str, job_id: str, block_id: str,
         review_status: str, version: int,
-        edited_text: Optional[str] = None,
-        edited_type: Optional[str] = None,
-        revision_id: Optional[str] = None,
-    ) -> Optional[dict]:
+        edited_text: str | None = None,
+        edited_type: str | None = None,
+        revision_id: str | None = None,
+    ) -> dict | None:
         """Update block review status with optimistic locking."""
         updates: dict = {
             "review_status": review_status,
@@ -274,8 +270,8 @@ class Database:
 
     async def get_chunks(
         self, tenant_id: str, job_id: str,
-        status: Optional[str] = None,
-        chunk_type: Optional[str] = None,
+        status: str | None = None,
+        chunk_type: str | None = None,
         skip: int = 0, limit: int = 100,
     ) -> list[dict]:
         """Get chunks with optional filters."""
@@ -290,9 +286,9 @@ class Database:
     async def update_chunk_review(
         self, tenant_id: str, job_id: str, chunk_id: str,
         review_status: str, version: int,
-        edited_text: Optional[str] = None,
-        revision_id: Optional[str] = None,
-    ) -> Optional[dict]:
+        edited_text: str | None = None,
+        revision_id: str | None = None,
+    ) -> dict | None:
         """Update chunk review status with optimistic locking."""
         updates: dict = {
             "review_status": review_status,
@@ -426,7 +422,7 @@ class Database:
             "job_id": job_id,
             "index_version": index_version,
             "status": "embedding",
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
             **config,
         }
         await self.index_versions.update_one(
@@ -437,7 +433,7 @@ class Database:
 
     async def get_latest_index_version(
         self, tenant_id: str, job_id: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Get the latest successful index version for a job."""
         cursor = self.index_versions.find(
             {"tenant_id": tenant_id, "job_id": job_id, "status": "indexed"},
@@ -468,8 +464,8 @@ class Database:
             "rolling_summary": "",
             "long_term_facts": [],
             "version": 1,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
             "deleted_at": None,
         }
         await self.chat_sessions.insert_one(doc)
@@ -477,7 +473,7 @@ class Database:
 
     async def get_chat_session(
         self, tenant_id: str, session_id: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Get a chat session (excludes soft-deleted)."""
         return await self.chat_sessions.find_one(
             {
@@ -494,7 +490,7 @@ class Database:
         """Soft-delete a session (sets deleted_at, excluded from queries)."""
         result = await self.chat_sessions.update_one(
             {"tenant_id": tenant_id, "session_id": session_id, "deleted_at": None},
-            {"$set": {"deleted_at": datetime.now(timezone.utc)}},
+            {"$set": {"deleted_at": datetime.now(UTC)}},
         )
         return result.modified_count > 0
 
@@ -511,7 +507,7 @@ class Database:
             {
                 "$set": {
                     "rolling_summary": summary,
-                    "updated_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(UTC),
                 },
                 "$inc": {"version": 1},
             },
@@ -531,7 +527,7 @@ class Database:
             {
                 "$set": {
                     "long_term_facts": facts,
-                    "updated_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(UTC),
                 },
                 "$inc": {"version": 1},
             },
@@ -556,7 +552,7 @@ class Database:
             {"tenant_id": tenant_id, "session_id": session_id},
             {
                 "$inc": {"turn_count": 1},
-                "$set": {"updated_at": datetime.now(timezone.utc)},
+                "$set": {"updated_at": datetime.now(UTC)},
             },
         )
 
@@ -578,7 +574,7 @@ class Database:
 
     async def get_turn_by_idempotency_key(
         self, tenant_id: str, session_id: str, idempotency_key: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Check for existing turn with same idempotency key (exactly-once)."""
         return await self.chat_turns.find_one(
             {
@@ -640,7 +636,7 @@ class Database:
         self, ttl_days: int = 30
     ) -> list[dict]:
         """Find soft-deleted sessions past the retention period."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=ttl_days)
+        cutoff = datetime.now(UTC) - timedelta(days=ttl_days)
         cursor = self.chat_sessions.find(
             {"deleted_at": {"$lte": cutoff}},
             {"session_id": 1, "tenant_id": 1, "_id": 0},

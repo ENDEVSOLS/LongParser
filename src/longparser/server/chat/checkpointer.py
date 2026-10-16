@@ -3,14 +3,14 @@
 Holds the global per-worker instance of the MongoDBSaver.
 """
 import logging
-from typing import Optional
-from pymongo import MongoClient
+
 from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
 
 logger = logging.getLogger(__name__)
 
-_mongo_client: Optional[MongoClient] = None
-_checkpointer: Optional[MongoDBSaver] = None
+_mongo_client: MongoClient | None = None
+_checkpointer: MongoDBSaver | None = None
 
 
 async def init_checkpointer(mongo_uri: str, db_name: str) -> None:

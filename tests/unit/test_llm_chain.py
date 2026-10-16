@@ -6,7 +6,11 @@ import pytest
 
 pytest.importorskip("langchain_core", reason="langchain_core not installed — run: pip install longparser[server]")
 
-from longparser.server.chat.llm_chain import DEFAULT_MODELS, SUPPORTED_PROVIDERS, get_chat_model  # noqa: E402
+from longparser.server.chat.llm_chain import (  # noqa: E402
+    DEFAULT_MODELS,
+    SUPPORTED_PROVIDERS,
+    get_chat_model,
+)
 from longparser.server.chat.schemas import ChatConfig  # noqa: E402
 
 

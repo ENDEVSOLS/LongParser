@@ -10,10 +10,10 @@ Provides the full RAG chat stack:
 - :mod:`~longparser.server.chat.schemas` — Pydantic models for chat API
 """
 
-from .engine import ChatEngine
-from .retriever import LongParserRetriever
 from .callbacks import LongParserCallbackHandler
-from .llm_chain import get_chat_model, get_plain_chat_model, DEFAULT_MODELS
+from .engine import ChatEngine
+from .llm_chain import DEFAULT_MODELS, get_chat_model, get_plain_chat_model
+from .retriever import LongParserRetriever
 from .schemas import (
     ChatConfig,
     ChatRequest,

@@ -20,7 +20,6 @@ Usage::
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +151,7 @@ def extract_sample_text(file_path, max_chars: int = 2000) -> str:
     # For text-like files: read directly
     if ext in (".csv", ".txt", ".md"):
         try:
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
                 return f.read(max_chars)
         except Exception:
             return ""

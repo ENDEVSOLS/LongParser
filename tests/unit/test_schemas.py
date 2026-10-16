@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import uuid
 import pytest
 from pydantic import ValidationError
 
 from longparser.schemas import (
-    Block,
     BlockFlags,
     BlockType,
     BoundingBox,
@@ -16,17 +14,13 @@ from longparser.schemas import (
     Confidence,
     Document,
     DocumentMetadata,
-    ExtractorType,
     JobRequest,
     JobResult,
     Page,
     ProcessingConfig,
-    Provenance,
-    Table,
     TableCell,
 )
-from tests.conftest import make_block, make_provenance, make_confidence
-
+from tests.conftest import make_block
 
 # ---------------------------------------------------------------------------
 # BoundingBox

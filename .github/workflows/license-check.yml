@@ -18,7 +18,7 @@ jobs:
           FAIL=0
 
           # List of GPL/AGPL package import patterns to block
-          BLOCKED_PATTERNS="import[[:space:]]+pymupdf|from[[:space:]]+pymupdf|import[[:space:]]+marker\.|from[[:space:]]+marker\.|import[[:space:]]+surya|from[[:space:]]+surya"
+          BLOCKED_PATTERNS="import[[:space:]]+pymupdf|from[[:space:]]+pymupdf|(import|from)[[:space:]]+marker([[:space:].]|$)|import[[:space:]]+surya|from[[:space:]]+surya"
 
           # Files that ARE allowed to import these (isolated backends)
           ALLOWED_FILES=(

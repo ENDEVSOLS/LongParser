@@ -2,9 +2,8 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
-from ..schemas import Document, Page, ProcessingConfig, ExtractorType
+from ..schemas import Document, ExtractorType, Page, ProcessingConfig
 
 
 class BaseExtractor(ABC):
@@ -18,7 +17,7 @@ class BaseExtractor(ABC):
         self,
         file_path: Path,
         config: ProcessingConfig,
-        page_numbers: Optional[list[int]] = None,
+        page_numbers: list[int] | None = None,
     ) -> Document:
         """
         Extract content from a document.

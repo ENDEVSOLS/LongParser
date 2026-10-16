@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import uuid
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -27,9 +26,9 @@ async def extract_job(ctx: dict, tenant_id: str, job_id: str, file_path: str) ->
       4. Upsert blocks + chunks into MongoDB
       5. Update job status → ready_for_review
     """
-    from .db import Database
     from ..pipeline import PipelineOrchestrator
-    from ..schemas import ProcessingConfig, ChunkingConfig
+    from ..schemas import ChunkingConfig, ProcessingConfig
+    from .db import Database
 
     db = Database()
 
@@ -113,7 +112,7 @@ async def extract_job(ctx: dict, tenant_id: str, job_id: str, file_path: str) ->
         # Auto-enqueue summary enrichment if enabled
         import os
         if os.getenv("LONGPARSER_GENERATE_SUMMARIES", "false").lower() in ("true", "1"):
-            from arq.jobs import Job
+            from arq.jobs import Job  # noqa: F401 — preserve lazy import behavior
             await ctx["redis"].enqueue_job(
                 "enrich_summaries_job", tenant_id, job_id,
                 _job_id=f"summary-{job_id}",
@@ -265,8 +264,8 @@ async def enrich_summaries_job(
     groups by section_path, calls LLM for 1-2 sentence summaries,
     and upserts new summary chunks back into MongoDB.
     """
-    from .db import Database
     from ..pipeline.summary_enricher import generate_summary_chunks
+    from .db import Database
 
     db = Database()
     try:
@@ -308,10 +307,11 @@ async def summarize_session(ctx: dict, tenant_id: str, session_id: str) -> dict:
       3. Update rolling_summary with optimistic lock
       4. Archive summarized turns
     """
-    from .db import Database
-    from .chat.schemas import ChatConfig
+    from langchain_core.messages import HumanMessage, SystemMessage
+
     from .chat.llm_chain import get_plain_chat_model
-    from langchain_core.messages import SystemMessage, HumanMessage
+    from .chat.schemas import ChatConfig
+    from .db import Database
 
     db = Database()
     config = ChatConfig()
@@ -374,10 +374,14 @@ async def extract_facts(
 
     Only persists facts from allowlisted types with chunk provenance.
     """
-    from .db import Database
-    from .chat.schemas import ChatConfig, FactSourceType
+    from langchain_core.messages import HumanMessage, SystemMessage
+
     from .chat.llm_chain import get_chat_model
-    from langchain_core.messages import SystemMessage, HumanMessage
+    from .chat.schemas import (  # noqa: F401 — preserve lazy import behavior
+        ChatConfig,
+        FactSourceType,
+    )
+    from .db import Database
 
     db = Database()
     config = ChatConfig()
@@ -457,8 +461,8 @@ async def extract_facts(
 
 async def purge_expired_sessions(ctx: dict) -> dict:
     """Scheduled task: hard-delete turns for soft-deleted sessions past TTL."""
-    from .db import Database
     from .chat.schemas import ChatConfig
+    from .db import Database
 
     db = Database()
     config = ChatConfig()
@@ -506,6 +510,7 @@ class WorkerSettings:
     # 10-min timeout: ~72s Docling + up to 420s formula OCR + headroom
     job_timeout = 420
     import os
+
     from arq.connections import RedisSettings
     _redis_url = os.getenv("LONGPARSER_REDIS_URL", "redis://localhost:6379/0")
     redis_settings = RedisSettings.from_dsn(_redis_url)

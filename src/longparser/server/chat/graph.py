@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import TypedDict, Optional, Any
+from typing import Any, TypedDict
 
-from langgraph.graph import StateGraph, END
-from langgraph.types import interrupt, Command
+from langgraph.graph import END, StateGraph
+from langgraph.types import Command, interrupt
 
-from .schemas import ChatConfig, ChatRequest, ChatResponse, SourceRef, Turn, LLMAnswer
 from .checkpointer import get_checkpointer
+from .schemas import LLMAnswer, SourceRef
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class HITLState(TypedDict):
     sources: list[dict]
     turn_id: str
     status: str           # "pending_review" | "complete" | "rejected"
-    human_decision: Optional[dict]
+    human_decision: dict | None
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ async def start_hitl_review(
 async def resume_hitl_review(
     thread_id: str,
     action: str,
-    edited_answer: Optional[str] = None,
+    edited_answer: str | None = None,
 ) -> HITLState:
     """Resume a paused HITL flow with the human's decision."""
     config = {"configurable": {"thread_id": thread_id}}

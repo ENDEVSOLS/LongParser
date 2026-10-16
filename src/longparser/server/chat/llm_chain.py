@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
 
 from .schemas import ChatConfig
 
@@ -28,7 +27,7 @@ SUPPORTED_PROVIDERS = list(DEFAULT_MODELS.keys())
 
 
 def _create_openai(model: str, temperature: float, max_tokens: int,
-                   max_retries: int, callbacks: Optional[list] = None):
+                   max_retries: int, callbacks: list | None = None):
     """Create OpenAI chat model."""
     from langchain_openai import ChatOpenAI
     return ChatOpenAI(
@@ -41,7 +40,7 @@ def _create_openai(model: str, temperature: float, max_tokens: int,
 
 
 def _create_gemini(model: str, temperature: float, max_tokens: int,
-                   max_retries: int, callbacks: Optional[list] = None):
+                   max_retries: int, callbacks: list | None = None):
     """Create Google Gemini chat model."""
     from langchain_google_genai import ChatGoogleGenerativeAI
     return ChatGoogleGenerativeAI(
@@ -54,7 +53,7 @@ def _create_gemini(model: str, temperature: float, max_tokens: int,
 
 
 def _create_groq(model: str, temperature: float, max_tokens: int,
-                 max_retries: int, callbacks: Optional[list] = None):
+                 max_retries: int, callbacks: list | None = None):
     """Create Groq chat model."""
     from langchain_groq import ChatGroq
     return ChatGroq(
@@ -67,7 +66,7 @@ def _create_groq(model: str, temperature: float, max_tokens: int,
 
 
 def _create_openrouter(model: str, temperature: float, max_tokens: int,
-                       max_retries: int, callbacks: Optional[list] = None):
+                       max_retries: int, callbacks: list | None = None):
     """Create OpenRouter chat model (OpenAI-compatible)."""
     from langchain_openai import ChatOpenAI
     return ChatOpenAI(
@@ -90,14 +89,14 @@ _CREATORS = {
 
 
 def get_chat_model(
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
-    config: Optional[ChatConfig] = None,
+    provider: str | None = None,
+    model: str | None = None,
+    config: ChatConfig | None = None,
     *,
     temperature: float = 0.1,
-    max_tokens: Optional[int] = None,
+    max_tokens: int | None = None,
     json_mode: bool = False,
-    callbacks: Optional[list] = None,
+    callbacks: list | None = None,
 ):
     """Create a LangChain chat model for any supported provider.
 
@@ -142,9 +141,9 @@ def get_chat_model(
 
 
 def get_plain_chat_model(
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
-    config: Optional[ChatConfig] = None,
+    provider: str | None = None,
+    model: str | None = None,
+    config: ChatConfig | None = None,
 ):
     """Get a plain (non-structured) chat model for summarization / plain text tasks."""
     return get_chat_model(

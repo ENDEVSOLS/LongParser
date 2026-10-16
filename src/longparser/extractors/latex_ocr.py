@@ -8,9 +8,9 @@ Production-hardened with:
 - Graceful degradation when weights unavailable
 """
 
+import logging
 import os
 import re
-import logging
 import threading
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -75,9 +75,9 @@ def strip_delimiters(s: str) -> str:
     elif s.startswith("$") and s.endswith("$"):
         s = s[1:-1].strip()
     # Remove \[ \] or \( \)
-    if s.startswith("\\[") and s.endswith("\\]"):
-        s = s[2:-2].strip()
-    elif s.startswith("\\(") and s.endswith("\\)"):
+    if (s.startswith("\\[") and s.endswith("\\]")) or (
+        s.startswith("\\(") and s.endswith("\\)")
+    ):
         s = s[2:-2].strip()
     return s
 
@@ -95,7 +95,7 @@ class LaTeXOCRBackend(ABC):
         ...
 
     @abstractmethod
-    def recognize(self, image) -> Optional[str]:
+    def recognize(self, image) -> str | None:
         """Run inference on a PIL Image. Returns raw LaTeX or None."""
         ...
 
@@ -135,7 +135,7 @@ class Pix2TexBackend(LaTeXOCRBackend):
             logger.warning(f"Pix2TexBackend failed to load: {e}")
             return False
 
-    def recognize(self, image) -> Optional[str]:
+    def recognize(self, image) -> str | None:
         if self._model is None:
             return None
         try:
@@ -162,8 +162,8 @@ class UniMERNetBackend(LaTeXOCRBackend):
             torch.set_num_threads(int(os.getenv("LONGPARSER_LATEX_OCR_THREADS", "2")))
 
             from unimernet.common.config import Config
-            from unimernet.processors import load_processor
             from unimernet.models import load_model
+            from unimernet.processors import load_processor
 
             model_dir = os.getenv("LONGPARSER_UNIMERNET_MODEL_DIR", "")
             if not model_dir or not os.path.isdir(model_dir):
@@ -186,7 +186,7 @@ class UniMERNetBackend(LaTeXOCRBackend):
             logger.warning(f"UniMERNetBackend failed to load: {e}")
             return False
 
-    def recognize(self, image) -> Optional[str]:
+    def recognize(self, image) -> str | None:
         if self._model is None:
             return None
         try:
@@ -219,7 +219,7 @@ class LaTeXOCR:
             if backend not in cls._instances:
                 instance = super().__new__(cls)
                 instance._backend_name = backend
-                instance._backend: Optional[LaTeXOCRBackend] = None
+                instance._backend: LaTeXOCRBackend | None = None
                 instance._available = False
                 instance._initialized = False
                 cls._instances[backend] = instance
@@ -252,7 +252,7 @@ class LaTeXOCR:
         self._ensure_loaded()
         return self._available
 
-    def recognize(self, image) -> Optional[str]:
+    def recognize(self, image) -> str | None:
         """Recognize a formula image → validated LaTeX string.
 
         Returns None if backend unavailable, inference fails, or validation fails.

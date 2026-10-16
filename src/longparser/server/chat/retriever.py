@@ -7,7 +7,7 @@ enabling plugging into LCEL chains.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
@@ -30,11 +30,11 @@ class LongParserRetriever(BaseRetriever):
     top_k: int = 5
 
     # Resolved at runtime from index_version
-    _vector_db: Optional[str] = None
-    _model_name: Optional[str] = None
-    _provider: Optional[str] = None
-    _configured_dimensions: Optional[int] = None
-    _collection: Optional[str] = None
+    _vector_db: str | None = None
+    _model_name: str | None = None
+    _provider: str | None = None
+    _configured_dimensions: int | None = None
+    _collection: str | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -56,7 +56,7 @@ class LongParserRetriever(BaseRetriever):
         self,
         query: str,
         *,
-        run_manager: Optional[CallbackManagerForRetrieverRun] = None,
+        run_manager: CallbackManagerForRetrieverRun | None = None,
     ) -> list[Document]:
         """Sync retrieval — delegates to existing vector store."""
         import asyncio
@@ -68,7 +68,7 @@ class LongParserRetriever(BaseRetriever):
         self,
         query: str,
         *,
-        run_manager: Optional[CallbackManagerForRetrieverRun] = None,
+        run_manager: CallbackManagerForRetrieverRun | None = None,
     ) -> list[Document]:
         """Async retrieval using existing EmbeddingEngine + vector store."""
         await self._resolve_index()

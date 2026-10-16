@@ -13,8 +13,8 @@ Usage:
     diff benchmark_v013.txt benchmark_v020.txt
 """
 
-import time
 import sys
+import time
 from pathlib import Path
 
 

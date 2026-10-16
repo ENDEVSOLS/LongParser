@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -54,7 +54,7 @@ class Confidence(BaseModel):
     overall: float = Field(ge=0.0, le=1.0)
     text_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     layout_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    table_confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    table_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class BlockFlags(BaseModel):
@@ -72,7 +72,7 @@ class TableCell(BaseModel):
     row_span: int = Field(default=1, alias="rspan")
     col_span: int = Field(default=1, alias="cspan")
     text: str = ""
-    bbox: Optional[BoundingBox] = None
+    bbox: BoundingBox | None = None
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
     class Config:
@@ -86,8 +86,8 @@ class Table(BaseModel):
     n_cols: int
     cells: list[TableCell] = Field(default_factory=list)
     table_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    csv_path: Optional[str] = None
-    html_path: Optional[str] = None
+    csv_path: str | None = None
+    html_path: str | None = None
 
 
 class Block(BaseModel):
@@ -96,7 +96,7 @@ class Block(BaseModel):
     type: BlockType
     text: str = ""
     order_index: int = 0
-    heading_level: Optional[int] = Field(default=None, description="Heading level (1-6) for heading blocks, inferred by Docling")
+    heading_level: int | None = Field(default=None, description="Heading level (1-6) for heading blocks, inferred by Docling")
     indent_level: int = Field(default=0, description="Bullet nesting depth (0=top, 1=sub, 2=sub-sub). Used for PPTX list items.")
     hierarchy_path: list[str] = Field(default_factory=list)
     refs_out: list[str] = Field(default_factory=list)
@@ -104,9 +104,9 @@ class Block(BaseModel):
     provenance: Provenance
     confidence: Confidence
     flags: BlockFlags = Field(default_factory=BlockFlags)
-    table: Optional[Table] = None
-    image_path: Optional[str] = None
-    bbox_px: Optional[tuple] = Field(default=None, description="Pixel-space bounding box (x0,y0,x1,y1) for MFD dedup")
+    table: Table | None = None
+    image_path: str | None = None
+    bbox_px: tuple | None = Field(default=None, description="Pixel-space bounding box (x0,y0,x1,y1) for MFD dedup")
     pii_redactions: dict = Field(default_factory=dict, description="PII redaction map: placeholder → original (for authorized review)")
 
 
@@ -116,7 +116,7 @@ class PageProfile(BaseModel):
     needs_reprocess: bool = False
     validation_errors: list[str] = Field(default_factory=list)
     layout_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    table_confidence: Optional[float] = None
+    table_confidence: float | None = None
     has_rtl: bool = False
     has_math: bool = False
     detected_columns: int = Field(default=1, description="Number of text columns detected on page")
@@ -129,16 +129,16 @@ class Page(BaseModel):
     width: float
     height: float
     blocks: list[Block] = Field(default_factory=list)
-    rendered_image_path: Optional[str] = None
-    profile: Optional[PageProfile] = None
+    rendered_image_path: str | None = None
+    profile: PageProfile | None = None
 
 
 class DocumentMetadata(BaseModel):
     """Document-level metadata."""
     source_file: str
     file_hash: str = ""
-    language: Optional[str] = None
-    detected_language: Optional[str] = Field(default=None, description="Auto-detected language code (ISO 639-1) via fast-langdetect")
+    language: str | None = None
+    detected_language: str | None = Field(default=None, description="Auto-detected language code (ISO 639-1) via fast-langdetect")
     language_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence of auto-detected language")
     total_pages: int = 0
     academic_mode: bool = False
@@ -173,11 +173,11 @@ class ProcessingConfig(BaseModel):
     force_marker_cpu: bool = Field(default=False, description="Bypass 10-page soft cap when running Marker on CPU")
 
     # --- v0.1.4: Language detection ---
-    languages: Optional[list[str]] = Field(default=None, description="Explicit Tesseract language codes, e.g. ['eng','ara']. Overrides auto-detect.")
+    languages: list[str] | None = Field(default=None, description="Explicit Tesseract language codes, e.g. ['eng','ara']. Overrides auto-detect.")
     auto_detect_language: bool = Field(default=True, description="Auto-detect document language before OCR (uses fast-langdetect)")
 
     # --- v0.1.4: Multi-column layout ---
-    column_count_hint: Optional[int] = Field(default=None, description="Manual column count hint. None = auto-detect by Docling")
+    column_count_hint: int | None = Field(default=None, description="Manual column count hint. None = auto-detect by Docling")
     force_left_to_right: bool = Field(default=False, description="Force left-to-right top-to-bottom reading order")
 
     academic_mode: bool = False
@@ -186,7 +186,7 @@ class ProcessingConfig(BaseModel):
     formula_ocr: bool = True  # Independent from do_ocr — runs pix2tex even when text OCR is off
     do_table_structure: bool = True
     export_images: bool = True
-    images_output_dir: Optional[str] = None
+    images_output_dir: str | None = None
     layout_confidence_threshold: float = 0.7
     table_confidence_threshold: float = 0.75
     ocr_noise_threshold: float = 0.15
@@ -216,12 +216,12 @@ class ProcessingConfig(BaseModel):
 class ExtractionMetadata(BaseModel):
     """Metadata from smart extraction strategy."""
     strategy_used: str = "standard"  # standard | force_full_page_ocr
-    initial_low_grade: Optional[str] = None
-    fallback_low_grade: Optional[str] = None
+    initial_low_grade: str | None = None
+    fallback_low_grade: str | None = None
     improved: bool = False
     fallback_degraded: bool = False
     reprocessed_pages: list[int] = Field(default_factory=list)
-    ocr_backend_used: Optional[str] = None
+    ocr_backend_used: str | None = None
     reasons: list[str] = Field(default_factory=list)
     # --- v0.1.4: OCR routing metadata ---
     ocr_strategy: str = Field(default="standard", description="OCR strategy used: 'standard' | 'math' | 'full_ocr'")
@@ -246,7 +246,7 @@ class ChunkingConfig(BaseModel):
     semantic_model: str = Field(default="all-MiniLM-L6-v2", description="SentenceTransformer model for semantic chunking (default is fastest on CPU; use 'all-mpnet-base-v2' for higher accuracy)")
     generate_summary_chunks: bool = Field(default=False, description="Auto-generate a 1-2 sentence summary chunk per section (requires LLM, runs as background task)")
     summary_llm_provider: str = Field(default="gemini", description="LLM provider for summary generation")
-    summary_llm_model: Optional[str] = Field(default=None, description="LLM model for summary generation (None = provider default)")
+    summary_llm_model: str | None = Field(default=None, description="LLM model for summary generation (None = provider default)")
 
 
 class Chunk(BaseModel):
@@ -260,7 +260,7 @@ class Chunk(BaseModel):
     block_ids: list[str] = Field(default_factory=list)
     overlap_with_previous: bool = False
     equation_detected: bool = False
-    image_path: Optional[str] = Field(default=None, description="Path to figure image if chunk_type == 'figure'")
+    image_path: str | None = Field(default=None, description="Path to figure image if chunk_type == 'figure'")
     metadata: dict = Field(default_factory=dict)  # row_start, row_end, sheet, col_band
     quality_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Chunk quality score (0=garbled, 1=perfect)")
 

@@ -12,7 +12,6 @@ import os
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class BaseVectorStore(ABC):
         self,
         query_embedding: list[float],
         top_k: int = 5,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
     ) -> list[dict]:
         """Search for similar vectors. Returns list of {id, score, metadata, document}."""
         ...
@@ -62,10 +61,10 @@ class ChromaStore(BaseVectorStore):
     ):
         try:
             import chromadb
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "chromadb is required. Install: pip install longparser[chroma]"
-            )
+            ) from err
 
         # Securely isolate vector spaces based on model config
         if index_fingerprint:
@@ -163,10 +162,10 @@ class FAISSStore(BaseVectorStore):
     ):
         try:
             import faiss  # noqa: F401
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "faiss-cpu is required. Install: pip install longparser[faiss-cpu]"
-            )
+            ) from err
 
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -181,7 +180,7 @@ class FAISSStore(BaseVectorStore):
 
     def _load_index(self, job_id: str):
         import faiss
-        import numpy as np
+        import numpy as np  # noqa: F401 — preserve lazy import behavior
 
         idx_dir = self._index_path(job_id)
         index_file = idx_dir / "index.faiss"
@@ -246,7 +245,7 @@ class FAISSStore(BaseVectorStore):
         self._save_index(job_id, index, existing_ids, existing_metas, existing_docs)
 
     def search(self, query_embedding, top_k=5, filters=None) -> list[dict]:
-        import faiss
+        import faiss  # noqa: F401 — preserve lazy import behavior
         import numpy as np
 
         job_id = filters.get("job_id", "default") if filters else "default"
@@ -294,11 +293,14 @@ class QdrantStore(BaseVectorStore):
     ):
         try:
             from qdrant_client import QdrantClient
-            from qdrant_client.models import Distance, VectorParams
-        except ImportError:
+            from qdrant_client.models import (  # noqa: F401 — availability check
+                Distance,
+                VectorParams,
+            )
+        except ImportError as err:
             raise ImportError(
                 "qdrant-client is required. Install: pip install longparser[qdrant]"
-            )
+            ) from err
 
         self.client = QdrantClient(url=url)
         # Securely isolate vector spaces based on model config
@@ -308,7 +310,10 @@ class QdrantStore(BaseVectorStore):
 
     def _ensure_collection(self, dim: int) -> None:
         """Create or validate collection. Mismatch → new collection name."""
-        from qdrant_client.models import Distance, VectorParams
+        from qdrant_client.models import (  # noqa: F401 — preserve lazy import behavior
+            Distance,
+            VectorParams,
+        )
 
         collections = [c.name for c in self.client.get_collections().collections]
 
@@ -341,7 +346,9 @@ class QdrantStore(BaseVectorStore):
         self._ensure_collection(dim)
 
         points = []
-        for i, (vid, emb, meta, doc) in enumerate(zip(ids, embeddings, metadatas, documents)):
+        for i, (vid, emb, meta, doc) in enumerate(
+            zip(ids, embeddings, metadatas, documents, strict=False)
+        ):
             # Flatten lists in payload for Qdrant filtering
             payload = {**meta, "document": doc}
             for k, v in payload.items():
@@ -357,7 +364,7 @@ class QdrantStore(BaseVectorStore):
         self.client.upsert(collection_name=self.collection_name, points=points)
 
     def search(self, query_embedding, top_k=5, filters=None) -> list[dict]:
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         search_filter = None
         if filters:
@@ -393,7 +400,7 @@ class QdrantStore(BaseVectorStore):
         return output
 
     def delete_by_job(self, job_id: str, tenant_id: str = "") -> None:
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         try:
             conditions = [FieldCondition(key="job_id", match=MatchValue(value=job_id))]

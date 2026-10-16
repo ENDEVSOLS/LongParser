@@ -51,6 +51,7 @@ from .schemas import (
     TableCell,
 )
 
+
 # Heavy dependencies (docling, motor, etc.) are imported lazily so that
 # ``import longparser`` and ``from longparser.schemas import ...`` work
 # in environments where optional extras are not installed.

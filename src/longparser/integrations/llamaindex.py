@@ -18,12 +18,12 @@ Usage::
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from llama_index.core import Document as LIDocument
 
-from ..schemas import ProcessingConfig, ChunkingConfig
+from ..schemas import ChunkingConfig, ProcessingConfig
 
 _INSTALL_MSG = (
     "llama-index-core is required for the LlamaIndex adapter. "
@@ -34,8 +34,8 @@ _INSTALL_MSG = (
 def _import_llamaindex():
     """Lazy import llama-index-core with a clear install message."""
     try:
-        from llama_index.core.readers.base import BaseReader
         from llama_index.core import Document as LIDocument
+        from llama_index.core.readers.base import BaseReader
         return BaseReader, LIDocument
     except ImportError as exc:
         raise ImportError(_INSTALL_MSG) from exc
@@ -64,8 +64,8 @@ class LongParserReader:
     def __init__(
         self,
         *,
-        config: Optional[ProcessingConfig] = None,
-        chunking_config: Optional[ChunkingConfig] = None,
+        config: ProcessingConfig | None = None,
+        chunking_config: ChunkingConfig | None = None,
         tesseract_lang: list[str] | None = None,
         tessdata_path: str | None = None,
     ) -> None:
@@ -84,7 +84,7 @@ class LongParserReader:
         self,
         file: str | Path,
         extra_info: dict | None = None,
-    ) -> list["LIDocument"]:
+    ) -> list[LIDocument]:
         """Load data from a file and return LlamaIndex ``Document`` objects.
 
         Parameters

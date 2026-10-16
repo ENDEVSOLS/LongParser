@@ -9,7 +9,7 @@ welcome contributions of all kinds.
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/) — `pip install uv`
 - MongoDB (local or Docker)
 - Redis (local or Docker)
@@ -73,7 +73,7 @@ docstrings with `Args:` and `Returns:` sections.
 
 ### Type Hints
 
-Use Python 3.10+ type hints. All public API must be fully annotated.
+Use Python 3.11+ type hints. All public API must be fully annotated.
 
 ---
 

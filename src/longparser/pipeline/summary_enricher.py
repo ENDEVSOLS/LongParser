@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-from typing import Dict, List, Any
 import uuid
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,10 @@ async def generate_summary_chunks(
     
     Loads chunks from DB, groups by section, queries LLM, and returns new chunks.
     """
-    from ..server.chat.llm_chain import get_plain_chat_model
-    from langchain_core.messages import SystemMessage, HumanMessage
     import tiktoken
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    from ..server.chat.llm_chain import get_plain_chat_model
     
     llm = get_plain_chat_model(provider=provider, model=model)
     sem = asyncio.Semaphore(max_concurrent)
@@ -53,7 +54,7 @@ async def generate_summary_chunks(
         return []
 
     # 2. Group by section_path
-    section_groups: Dict[tuple, List[str]] = {}
+    section_groups: dict[tuple, list[str]] = {}
     for chunk in chunks:
         # Only summarize main text sections, skip existing summaries or figures
         if chunk.get("chunk_type") not in ("section", "equation"):
@@ -67,7 +68,7 @@ async def generate_summary_chunks(
     summary_chunks = []
 
     # 3. Define the LLM call task
-    async def _summarize(path: tuple, texts: List[str]):
+    async def _summarize(path: tuple, texts: list[str]):
         async with sem:
             full_text = "\n\n".join(texts)
             truncated_text = _truncate(full_text, max_tokens=2000)

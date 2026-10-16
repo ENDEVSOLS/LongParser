@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Dict, List, Optional
 
-from ..schemas import Document, Chunk, Block, BlockType
+from ..schemas import Block, BlockType, Chunk, Document
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +57,11 @@ _DIRECTION_RE = re.compile(r'(above|below|following|preceding|previous|next)', r
 # ---------------------------------------------------------------------------
 
 def _build_proximity_index(
-    blocks: List[Block],
-) -> Dict[str, List[Block]]:
+    blocks: list[Block],
+) -> dict[str, list[Block]]:
     """Build ordered lists of figure and table blocks for proximity lookups."""
-    figures: List[Block] = []
-    tables: List[Block] = []
+    figures: list[Block] = []
+    tables: list[Block] = []
 
     for block in blocks:
         if block.type == BlockType.FIGURE:
@@ -74,11 +73,11 @@ def _build_proximity_index(
 
 
 def _find_nearest(
-    target_blocks: List[Block],
-    anchor_block_ids: List[str],
-    all_blocks: List[Block],
+    target_blocks: list[Block],
+    anchor_block_ids: list[str],
+    all_blocks: list[Block],
     direction: str,
-) -> Optional[str]:
+) -> str | None:
     """Find the nearest target block relative to the anchor blocks.
     
     direction: 'before' = look backwards, 'after' = look forwards
@@ -132,7 +131,7 @@ def resolve_cross_references(document: Document, chunks: list[Chunk]) -> list[Ch
     all_blocks = list(document.all_blocks)
 
     # 1. Build explicit label index: O(n) pass over document blocks
-    ref_index: Dict[str, str] = {}
+    ref_index: dict[str, str] = {}
 
     for block in all_blocks:
         if block.type in (BlockType.FIGURE, BlockType.TABLE, BlockType.CAPTION, BlockType.EQUATION):

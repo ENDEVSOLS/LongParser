@@ -17,13 +17,14 @@ Usage::
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from langchain_core.documents import Document as LCDocument
 
-from ..schemas import ProcessingConfig, ChunkingConfig
+from ..schemas import ChunkingConfig, ProcessingConfig
 
 _INSTALL_MSG = (
     "langchain-core is required for the LangChain adapter. "
@@ -67,8 +68,8 @@ class LongParserLoader:
         self,
         file_path: str | Path,
         *,
-        config: Optional[ProcessingConfig] = None,
-        chunking_config: Optional[ChunkingConfig] = None,
+        config: ProcessingConfig | None = None,
+        chunking_config: ChunkingConfig | None = None,
         tesseract_lang: list[str] | None = None,
         tessdata_path: str | None = None,
     ) -> None:
@@ -84,11 +85,11 @@ class LongParserLoader:
 
     # ---- LangChain interface -------------------------------------------------
 
-    def load(self) -> list["LCDocument"]:
+    def load(self) -> list[LCDocument]:
         """Load and return all documents."""
         return list(self.lazy_load())
 
-    def lazy_load(self) -> Iterator["LCDocument"]:
+    def lazy_load(self) -> Iterator[LCDocument]:
         """Lazily yield LangChain ``Document`` objects."""
         _, LCDocument = _import_langchain()
 

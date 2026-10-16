@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +23,10 @@ def _get_model(model_name: str = "all-MiniLM-L6-v2"):
 
 
 def find_semantic_boundaries(
-    texts: List[str],
+    texts: list[str],
     threshold: float = 0.3,
     model_name: str = "all-MiniLM-L6-v2",
-) -> List[int]:
+) -> list[int]:
     """Find semantic boundaries in a list of texts.
     
     Args:

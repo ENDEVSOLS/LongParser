@@ -5,7 +5,6 @@ without changing a single line of their code. Every new field must have
 a default that matches the v0.1.3 behavior.
 """
 
-import pytest
 
 
 class TestProcessingConfigCompat:
@@ -111,32 +110,34 @@ class TestPublicAPICompat:
 
     def test_all_v013_exports_available(self):
         from longparser import (  # noqa: F401
-            __version__,
-            Document,
-            Page,
             Block,
-            Table,
-            TableCell,
-            BlockType,
-            ExtractorType,
-            ProcessingConfig,
-            BoundingBox,
-            Provenance,
-            Confidence,
             BlockFlags,
-            DocumentMetadata,
-            PageProfile,
-            ExtractionMetadata,
-            ChunkingConfig,
+            BlockType,
+            BoundingBox,
             Chunk,
+            ChunkingConfig,
+            Confidence,
+            Document,
+            DocumentMetadata,
+            ExtractionMetadata,
+            ExtractorType,
             JobRequest,
             JobResult,
+            Page,
+            PageProfile,
+            ProcessingConfig,
+            Provenance,
+            Table,
+            TableCell,
+            __version__,
         )
 
     def test_lazy_imports_still_work(self):
         """Lazy imports from v0.1.3 must still resolve."""
-        from longparser import DocumentPipeline  # noqa: F401
-        from longparser import PipelineOrchestrator  # noqa: F401
-        from longparser import PipelineResult  # noqa: F401
-        from longparser import HybridChunker  # noqa: F401
-        from longparser import DoclingExtractor  # noqa: F401
+        from longparser import (
+            DoclingExtractor,  # noqa: F401
+            DocumentPipeline,  # noqa: F401
+            HybridChunker,  # noqa: F401
+            PipelineOrchestrator,  # noqa: F401
+            PipelineResult,  # noqa: F401
+        )
