@@ -29,3 +29,6 @@ changelog:
     - title: "🔒 Security"
       labels:
         - security
+    - title: "Other Changes"
+      labels:
+        - "*"

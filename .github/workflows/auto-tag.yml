@@ -1,69 +1,77 @@
-name: Auto Tag on Merge
+name: Release on PR Merge
 
 on:
-  push:
-    branches: [main]
+  workflow_call:
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
 
 jobs:
-  tag:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
+      pull-requests: read
+      actions: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-
-      - name: Read version from pyproject.toml
-        id: version
-        run: |
-          VERSION=$(python3 -c "
-          import tomllib
-          with open('pyproject.toml', 'rb') as f:
-              data = tomllib.load(f)
-          print(data['project']['version'])
-          ")
-          echo "version=v$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Check if tag already exists
-        id: check_tag
-        run: |
-          if git rev-parse "${{ steps.version.outputs.version }}" > /dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create and push tag
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.version }}"
-
-      - name: Extract changelog for this version
-        if: steps.check_tag.outputs.exists == 'false'
-        id: changelog
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          NOTES=$(python3 -c "
-          import re, sys
-          version = sys.argv[1].lstrip('v')
-          with open('CHANGELOG.md') as f:
-              content = f.read()
-          pattern = rf'## \[{re.escape(version)}\].*?\n(.*?)(?=\n## \[|\Z)'
-          match = re.search(pattern, content, re.DOTALL)
-          print(match.group(1).strip() if match else '')
-          " "$VERSION")
-          echo "$NOTES" > /tmp/release_notes.md
-
-      - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare version, changelog, tag and release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
         run: |
-          gh release create "${{ steps.version.outputs.version }}" \
-            --title "${{ steps.version.outputs.version }}" \
-            --notes-file /tmp/release_notes.md
+          set -euo pipefail
+          # Only merged PRs qualify; direct pushes never release.
+          MERGED=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length')
+          if [ "$MERGED" = 0 ]; then
+            echo "No merged PR associated with this commit; skipping release."
+            exit 0
+          fi
+
+          HEAD_SHA=$(git rev-parse HEAD)
+          MESSAGE="Automatic release for $SOURCE_SHA"
+          if [ "$HEAD_SHA" = "$SOURCE_SHA" ]; then
+            CURRENT=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+            NEXT=$(python -c 'import sys; a,b,c = map(int, sys.argv[1].split(".")); print(f"{a}.{b}.{c+1}")' "$CURRENT")
+            gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f "tag_name=v$NEXT" -f "target_commitish=$SOURCE_SHA" \
+              --jq .body > /tmp/generated_notes.md
+            VERSION=$(python scripts/prepare_release.py --notes /tmp/generated_notes.md \
+              --output /tmp/release_notes.md)
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pyproject.toml src/longparser/__init__.py uv.lock CHANGELOG.md
+            git commit -m "$MESSAGE"
+            git tag "v$VERSION"
+            # Never overwrite an intervening merge or leave the tag without its commit.
+            git push --atomic origin HEAD:main "refs/tags/v$VERSION"
+          elif [ "$(git log -1 --format=%s)" = "$MESSAGE" ] && \
+               [ "$(git rev-parse HEAD^)" = "$SOURCE_SHA" ]; then
+            # A rerun resumes after a failed release API call or package publication.
+            VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+            python scripts/prepare_release.py --extract "$VERSION" --output /tmp/release_notes.md
+          else
+            echo "A newer commit is on main; its successful CI run will release the combined changes."
+            exit 0
+          fi
+
+          if ! gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release create "v$VERSION" --verify-tag --title "v$VERSION" \
+              --notes-file /tmp/release_notes.md
+          fi
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          # workflow_dispatch runs with GITHUB_TOKEN and preserves publish.yml's
+          # standalone identity for the existing PyPI trusted publisher.
+          gh workflow run publish.yml --ref "v$VERSION" -f target=pypi
