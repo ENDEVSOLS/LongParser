@@ -99,10 +99,32 @@ All new features **must** include unit tests. PRs without tests will not be merg
 - [ ] Tests pass locally (`uv run pytest tests/unit/`)
 - [ ] Ruff passes (`uv run ruff check src/ tests/`)
 - [ ] New public API has docstrings
-- [ ] `CHANGELOG.md` updated under `[Unreleased]`
+- [ ] Optional detailed release notes added under `[Unreleased]` in `CHANGELOG.md`
 - [ ] PR description explains *what* changed and *why*
 
 ---
+
+## Automatic Releases
+
+After a PR merges into `main`, CI must pass lint, the Python test matrix, and the
+package build before releasing. The release job increments the patch version
+(for example, `0.1.5` to `0.1.6`) in the package metadata, runtime version, and
+lockfile. Do not bump these files manually for routine PRs.
+
+Release notes combine any `[Unreleased]` changelog entries with GitHub's generated
+PR notes. PRs without category labels appear under Other Changes. The job writes
+a dated changelog section, commits the version changes, creates a tag and GitHub
+release, and dispatches the PyPI publishing workflow at that tag. Direct pushes to
+`main` do not release. If a newer merge is already on `main`, its successful CI
+run releases the combined changes.
+
+The repository must allow GitHub Actions to write to `main` (including any branch
+protection or ruleset exceptions), and the existing `pypi` environment and trusted
+publisher must permit publication from `publish.yml`. The workflow uses the
+built-in `GITHUB_TOKEN`; no personal token is required. A failed API or publishing
+step can be retried by rerunning the CI workflow, provided `main` has not advanced.
+Publishing runs separately in Actions under **Publish to PyPI**; a successful CI
+release job confirms dispatch, while the publishing run confirms the upload.
 
 ## Reporting Issues
 
