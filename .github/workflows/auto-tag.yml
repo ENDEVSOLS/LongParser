@@ -1,4 +1,4 @@
-name: Release on PR Merge
+name: Prepare or Publish Release
 
 on:
   workflow_call:
@@ -12,66 +12,86 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: read
+      pull-requests: write
       actions: write
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Prepare version, changelog, tag and release
-        id: release
+      - name: Prepare a release PR or publish its merged version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          # Only merged PRs qualify; direct pushes never release.
           MERGED=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls" \
             --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length')
           if [ "$MERGED" = 0 ]; then
             echo "No merged PR associated with this commit; skipping release."
             exit 0
           fi
+          CURRENT=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          RELEASE_PR=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls" \
+            --jq "[.[] | select(.merged_at != null and .base.ref == \"main\" and .head.ref == \"automation/release-v$CURRENT\" and .head.repo.full_name == \"$GITHUB_REPOSITORY\")] | length")
 
-          HEAD_SHA=$(git rev-parse HEAD)
-          MESSAGE="Automatic release for $SOURCE_SHA"
-          if [ "$HEAD_SHA" = "$SOURCE_SHA" ]; then
-            CURRENT=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-            NEXT=$(python -c 'import sys; a,b,c = map(int, sys.argv[1].split(".")); print(f"{a}.{b}.{c+1}")' "$CURRENT")
-            gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
-              -f "tag_name=v$NEXT" -f "target_commitish=$SOURCE_SHA" \
-              --jq .body > /tmp/generated_notes.md
-            VERSION=$(python scripts/prepare_release.py --notes /tmp/generated_notes.md \
-              --output /tmp/release_notes.md)
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pyproject.toml src/longparser/__init__.py uv.lock CHANGELOG.md
-            git commit -m "$MESSAGE"
-            git tag "v$VERSION"
-            # Never overwrite an intervening merge or leave the tag without its commit.
-            git push --atomic origin HEAD:main "refs/tags/v$VERSION"
-          elif [ "$(git log -1 --format=%s)" = "$MESSAGE" ] && \
-               [ "$(git rev-parse HEAD^)" = "$SOURCE_SHA" ]; then
-            # A rerun resumes after a failed release API call or package publication.
-            VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-            python scripts/prepare_release.py --extract "$VERSION" --output /tmp/release_notes.md
-          else
-            echo "A newer commit is on main; its successful CI run will release the combined changes."
+          if [ "$RELEASE_PR" != 0 ]; then
+            # Version changes have already passed review and CI on protected main.
+            python scripts/prepare_release.py --extract "$CURRENT" --output /tmp/release_notes.md
+            if git show-ref --verify --quiet "refs/tags/v$CURRENT"; then
+              if [ "$(git rev-parse "refs/tags/v$CURRENT^{commit}")" != "$SOURCE_SHA" ]; then
+                echo "Tag v$CURRENT already points to a different commit."
+                exit 1
+              fi
+            else
+              git tag "v$CURRENT" "$SOURCE_SHA"
+              git push origin "refs/tags/v$CURRENT"
+            fi
+            if ! gh release view "v$CURRENT" > /dev/null 2>&1; then
+              gh release create "v$CURRENT" --verify-tag --title "v$CURRENT" \
+                --notes-file /tmp/release_notes.md
+            fi
+            # Dispatch preserves publish.yml's standalone PyPI publisher identity.
+            gh workflow run publish.yml --ref "v$CURRENT" -f target=pypi
             exit 0
           fi
 
-          if ! gh release view "v$VERSION" > /dev/null 2>&1; then
-            gh release create "v$VERSION" --verify-tag --title "v$VERSION" \
-              --notes-file /tmp/release_notes.md
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "$SOURCE_SHA" ]; then
+            echo "A newer commit is on main; its successful CI run will prepare the release PR."
+            exit 0
           fi
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          # workflow_dispatch runs with GITHUB_TOKEN and preserves publish.yml's
-          # standalone identity for the existing PyPI trusted publisher.
-          gh workflow run publish.yml --ref "v$VERSION" -f target=pypi
+          NEXT=$(python -c 'import sys; a,b,c = map(int, sys.argv[1].split(".")); print(f"{a}.{b}.{c+1}")' "$CURRENT")
+          BRANCH="automation/release-v$NEXT"
+          # Snapshot the bot branch for a targeted lease when refreshing an open PR.
+          EXPECTED=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f "tag_name=v$NEXT" -f "target_commitish=$SOURCE_SHA" \
+            --jq .body > /tmp/generated_notes.md
+          VERSION=$(python scripts/prepare_release.py --notes /tmp/generated_notes.md \
+            --output /tmp/release_notes.md)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml src/longparser/__init__.py uv.lock CHANGELOG.md
+          if [ -f docs/changelog.md ]; then git add docs/changelog.md; fi
+          git commit -m "chore: prepare release v$VERSION"
+          # Only this reserved automation branch is updated. main is never pushed.
+          git push --force-with-lease="refs/heads/$BRANCH:$EXPECTED" origin "HEAD:refs/heads/$BRANCH"
+          printf 'Prepare release v%s.\n\nReview and merge this PR after its checks pass. The release is published only after merge and successful main CI.\n\n' \
+            "$VERSION" > /tmp/release_pr.md
+          cat /tmp/release_notes.md >> /tmp/release_pr.md
+          PR=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            gh pr create --base main --head "$BRANCH" --title "chore: release v$VERSION" \
+              --body-file /tmp/release_pr.md
+          else
+            gh pr edit "$PR" --title "chore: release v$VERSION" --body-file /tmp/release_pr.md
+          fi
+          # Bot pushes do not trigger regular push workflows. Run the checks on
+          # the exact release branch without bypassing required review.
+          gh workflow run ci.yml --ref "$BRANCH"
+          gh workflow run license-check.yml --ref "$BRANCH"

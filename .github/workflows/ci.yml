@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -63,6 +64,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
-      pull-requests: read
+      pull-requests: write
       actions: write
     uses: ./.github/workflows/auto-tag.yml

@@ -70,6 +70,9 @@ def prepare(root: Path, generated_notes: str, output: Path) -> str:
         + f"## [Unreleased]\n\n## [{version}] — {today}\n\n{notes}\n---\n\n"
         + content[section.end():]
     )
+    docs_changelog = root / "docs/changelog.md"
+    if docs_changelog.is_file():
+        updates[docs_changelog] = updates[changelog]
     for path, updated in updates.items():
         path.write_text(updated)
     output.write_text(notes)
