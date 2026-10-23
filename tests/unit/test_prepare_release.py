@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -14,8 +15,8 @@ import yaml
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/prepare_release.py"
 
 
-@pytest.fixture
-def release_repo(tmp_path):
+@pytest.fixture(params=["unreleased", "numbered"])
+def release_repo(tmp_path, request):
     (tmp_path / "src/longparser").mkdir(parents=True)
     (tmp_path / "pyproject.toml").write_text('[project]\nname = "longparser"\nversion = "0.1.5"\n')
     (tmp_path / "src/longparser/__init__.py").write_text('__version__ = "0.1.5"\n')
@@ -24,9 +25,13 @@ def release_repo(tmp_path):
         '[[package]]\nname = "other"\nversion = "0.1.5"\n'
     )
     (tmp_path / "CHANGELOG.md").write_text(
-        "# Changelog\n\n## [Unreleased] — planned 0.1.6\n\n### Fixed\n\n"
+        "# Changelog\n\n"
+        + ("## [0.1.6] — 2026-10-01" if request.param == "numbered" else "## [Unreleased] — planned 0.1.6")
+        + "\n\n### Fixed\n\n"
         "- A bug.\n\n---\n\n## [0.1.5] — 2026-05-05\n\n- Previous release.\n"
     )
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs/changelog.md").write_text("Old website changelog\n")
     (tmp_path / "generated.md").write_text("## What's Changed\n* Add feature by @user in #12\n")
     return tmp_path
 
@@ -40,6 +45,7 @@ def run_release(root, *args):
 
 def test_patch_release_preserves_history_and_dependencies(release_repo):
     root = release_repo
+    numbered = "## [0.1.6] — 2026-10-01" in (root / "CHANGELOG.md").read_text()
     result = run_release(root, "--notes", "generated.md")
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "0.1.6"
@@ -48,7 +54,12 @@ def test_patch_release_preserves_history_and_dependencies(release_repo):
     packages = tomllib.loads((root / "uv.lock").read_text())["package"]
     assert [(p["name"], p["version"]) for p in packages] == [("longparser", "0.1.6"), ("other", "0.1.5")]
     changelog = (root / "CHANGELOG.md").read_text()
-    assert "## [Unreleased]\n\n## [0.1.6]" in changelog
+    assert (root / "docs/changelog.md").read_text() == changelog
+    assert changelog.count("## [0.1.6]") == 1
+    if numbered:
+        assert "## [0.1.6] — 2026-10-01" in changelog
+    else:
+        assert "## [Unreleased]\n\n## [0.1.6]" in changelog
     assert "## [0.1.5] — 2026-05-05\n\n- Previous release.\n" in changelog
     notes = (root / "notes.md").read_text()
     assert "- A bug." in notes and "#12" in notes
@@ -65,6 +76,34 @@ def test_release_without_manual_changelog_entry(release_repo):
     assert "#12" in (release_repo / "notes.md").read_text()
 
 
+def test_next_release_after_numbered_changelog(release_repo):
+    changelog = release_repo / "CHANGELOG.md"
+    changelog.write_text(changelog.read_text().replace("## [Unreleased] — planned 0.1.6", "## [0.1.6] — 2026-10-01"))
+    assert run_release(release_repo, "--notes", "generated.md").returncode == 0
+    previous = changelog.read_text()
+    result = run_release(release_repo, "--notes", "generated.md")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "0.1.7"
+    assert changelog.read_text().endswith(previous[previous.index("## [0.1.6]"):])
+
+
+def test_repository_release_inputs(tmp_path):
+    """Catch post-merge release failures using the real checked-in release inputs."""
+    root = SCRIPT.parents[1]
+    for name in ("pyproject.toml", "src/longparser/__init__.py", "uv.lock", "CHANGELOG.md", "docs/changelog.md"):
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(root / name, target)
+    (tmp_path / "generated.md").write_text("## What's Changed\n* Release input validation\n")
+    result = run_release(tmp_path, "--notes", "generated.md")
+    assert result.returncode == 0, result.stderr
+    version = result.stdout.strip()
+    assert tomllib.loads((tmp_path / "pyproject.toml").read_text())["project"]["version"] == version
+    assert (tmp_path / "docs/changelog.md").read_text() == (tmp_path / "CHANGELOG.md").read_text()
+    retry = run_release(tmp_path, "--extract", version)
+    assert retry.returncode == 0, retry.stderr
+
+
 @pytest.mark.parametrize("broken", ["package", "lock", "changelog", "duplicate", "empty"])
 def test_invalid_release_leaves_all_files_unchanged(release_repo, broken):
     if broken == "package":
@@ -75,7 +114,7 @@ def test_invalid_release_leaves_all_files_unchanged(release_repo, broken):
         (release_repo / "CHANGELOG.md").write_text("# Changelog\n")
     elif broken == "duplicate":
         with (release_repo / "CHANGELOG.md").open("a") as file:
-            file.write("\n## [0.1.6]\nAlready released.\n")
+            file.write("\n## [0.1.6]\nDuplicate.\n\n## [0.1.6]\nDuplicate again.\n")
     else:
         (release_repo / "CHANGELOG.md").write_text("## [Unreleased]\n")
         (release_repo / "generated.md").write_text("")
@@ -87,7 +126,7 @@ def test_invalid_release_leaves_all_files_unchanged(release_repo, broken):
 
 @pytest.fixture
 def workflow_repo(release_repo, tmp_path_factory):
-    """Run the actual release shell against local git and a stub GitHub API."""
+    """Run the real release shell against git with protected-main enforcement."""
     root = release_repo
     remote = tmp_path_factory.mktemp("remote") / "repo.git"
     subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
@@ -96,12 +135,21 @@ def workflow_repo(release_repo, tmp_path_factory):
         ["config", "user.name", "Test"],
         ["config", "user.email", "test@example.com"],
     ):
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+        git(root, *args)
     (root / "scripts").mkdir()
     (root / "scripts/prepare_release.py").write_text(SCRIPT.read_text())
     for args in (["add", "."], ["commit", "-m", "Merge PR"], ["remote", "add", "origin", str(remote)], ["push", "origin", "main"]):
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+        git(root, *args)
+    sha = git(root, "rev-parse", "HEAD")
+    hook = remote / "hooks/pre-receive"
+    hook.write_text(
+        '#!/bin/sh\nwhile read old new ref; do\n'
+        '  if [ "$ref" = "refs/heads/main" ]; then\n'
+        '    echo "GH013: Changes must be made through a pull request" >&2\n'
+        '    exit 1\n'
+        '  fi\ndone\n'
+    )
+    hook.chmod(0o755)
     bin_dir = tmp_path_factory.mktemp("release-bin")
     gh = bin_dir / "gh"
     gh.write_text(
@@ -110,67 +158,156 @@ def workflow_repo(release_repo, tmp_path_factory):
         "args = sys.argv[1:]\n"
         "state = pathlib.Path(os.environ['RELEASE_STATE'])\n"
         "if args[0] == 'api':\n"
-        "    print(os.environ.get('MERGED', '1') if args[1] != '--method' else '## Changes\\n* Merged PR #12')\n"
+        "    if args[1] == '--method': print('## Changes\\n* Merged PR #12')\n"
+        "    elif '.head.ref' in args[-1]: print(os.environ.get('RELEASE_PR', '0'))\n"
+        "    else: print(os.environ.get('MERGED', '1'))\n"
         "elif args[:2] == ['release', 'view']:\n"
         "    sys.exit(0 if state.exists() else 1)\n"
         "elif args[:2] == ['release', 'create']:\n"
         "    if os.environ.get('FAIL_CREATE') == '1': sys.exit(1)\n"
         "    state.write_text(args[2])\n"
+        "elif args[:2] == ['pr', 'list']:\n"
+        "    print('23' if state.with_suffix('.pr').exists() else '')\n"
+        "elif args[:2] == ['pr', 'create']:\n"
+        "    if os.environ.get('FAIL_PR') == '1': sys.exit(1)\n"
+        "    assert not state.with_suffix('.pr').exists(), 'duplicate release PR'\n"
+        "    state.with_suffix('.pr').write_text(' '.join(args))\n"
+        "elif args[:2] == ['pr', 'edit']:\n"
+        "    assert args[2] == '23'\n"
+        "    state.with_suffix('.edit').write_text(' '.join(args))\n"
         "elif args[:2] == ['workflow', 'run']:\n"
-        "    assert args[2:] == ['publish.yml', '--ref', 'v0.1.6', '-f', 'target=pypi']\n"
-        "    state.with_suffix('.dispatch').write_text(' '.join(args))\n"
+        "    with state.with_suffix('.dispatch').open('a') as f: f.write(' '.join(args) + '\\n')\n"
         "else:\n"
         "    sys.exit(2)\n"
     )
     gh.chmod(0o755)
     workflow = yaml.safe_load((SCRIPT.parents[1] / ".github/workflows/auto-tag.yml").read_text())
     shell = next(step["run"] for step in workflow["jobs"]["release"]["steps"] if "run" in step)
-    # The production script uses runner-local /tmp paths; isolate each test's notes.
     shell = shell.replace("/tmp/", str(bin_dir) + "/")
     env = dict(os.environ, SOURCE_SHA=sha, GITHUB_REPOSITORY="org/repo",
-               GITHUB_OUTPUT=str(bin_dir / "output"), RELEASE_STATE=str(bin_dir / "state"),
+               RELEASE_STATE=str(bin_dir / "state"),
                PATH=f"{bin_dir}:{Path(sys.executable).parent}:{os.environ['PATH']}")
     return root, shell, env
 
 
-def test_workflow_pushes_release_and_rerun_does_not_bump_again(workflow_repo):
+def git(root, *args):
+    return subprocess.check_output(["git", *args], cwd=root, text=True, stderr=subprocess.PIPE).strip()
+
+
+def run_workflow(workflow_repo, **overrides):
     root, shell, env = workflow_repo
+    # Match actions/checkout: each job starts from the exact tested source commit.
+    git(root, "checkout", "--detach", env["SOURCE_SHA"])
+    return subprocess.run(["bash", "-c", shell], cwd=root, env=dict(env, **overrides), capture_output=True, text=True)
+
+
+def merge_release_pr(workflow_repo):
+    """Simulate GitHub accepting an approved release PR, without bypassing the hook."""
+    root, _, env = workflow_repo
+    git(root, "fetch", "origin", "automation/release-v0.1.6")
+    git(root, "checkout", "main")
+    git(root, "merge", "--no-ff", "-m", "Merge version-update PR", "FETCH_HEAD")
+    env["SOURCE_SHA"] = git(root, "rev-parse", "HEAD")
+    env["RELEASE_PR"] = "1"
+    # GitHub's server-side merge updates main after its rules pass.
+    remote = git(root, "remote", "get-url", "origin")
+    git(root, f"--git-dir={remote}", "fetch", str(root), f"{env['SOURCE_SHA']}:refs/heads/main")
+
+
+def test_workflow_opens_release_pr_without_pushing_protected_main(workflow_repo):
+    root, _, env = workflow_repo
+    result = run_workflow(workflow_repo)
+    assert result.returncode == 0, result.stderr
+    state = Path(env["RELEASE_STATE"])
+    assert state.with_suffix('.pr').exists()
+    assert not state.exists(), "Publishing must wait for review and merge"
+    assert "refs/tags/v0.1.6" not in git(root, "ls-remote", "origin", "refs/tags/v0.1.6")
+    assert env["SOURCE_SHA"] in git(root, "ls-remote", "origin", "refs/heads/main")
+    assert "automation/release-v0.1.6" in git(root, "ls-remote", "origin", "refs/heads/automation/release-v0.1.6")
+    checks = state.with_suffix('.dispatch').read_text()
+    assert "workflow run ci.yml --ref automation/release-v0.1.6" in checks
+    assert "workflow run license-check.yml --ref automation/release-v0.1.6" in checks
+    assert "publish.yml" not in checks
+    retry = run_workflow(workflow_repo)
+    assert retry.returncode == 0, retry.stderr
+    assert state.with_suffix('.edit').exists()
+
+
+def test_workflow_publishes_merged_release_pr_and_retries_same_tag(workflow_repo):
+    result = run_workflow(workflow_repo)
+    assert result.returncode == 0, result.stderr
+    merge_release_pr(workflow_repo)
+    root, _, env = workflow_repo
     for _ in range(2):
-        result = subprocess.run(["bash", "-c", shell], cwd=root, env=env, capture_output=True, text=True)
+        result = run_workflow(workflow_repo)
         assert result.returncode == 0, result.stderr
         assert Path(env["RELEASE_STATE"]).read_text() == "v0.1.6"
-        assert Path(env["RELEASE_STATE"]).with_suffix('.dispatch').exists()
+    assert git(root, "rev-parse", "refs/tags/v0.1.6") == env["SOURCE_SHA"]
+    assert env["SOURCE_SHA"] in git(root, "ls-remote", "origin", "refs/tags/v0.1.6")
+    assert "workflow run publish.yml --ref v0.1.6 -f target=pypi" in Path(env["RELEASE_STATE"]).with_suffix('.dispatch').read_text()
     assert tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"] == "0.1.6"
-    remote_tag = subprocess.check_output(["git", "ls-remote", "origin", "refs/tags/v0.1.6"], cwd=root, text=True)
-    assert "refs/tags/v0.1.6" in remote_tag
-    count = subprocess.check_output(["git", "rev-list", "--count", "HEAD"], cwd=root, text=True)
-    assert count.strip() == "2"
 
 
 def test_workflow_recovers_after_release_api_failure(workflow_repo):
-    root, shell, env = workflow_repo
-    failed = subprocess.run(
-        ["bash", "-c", shell], cwd=root, env=dict(env, FAIL_CREATE="1"),
-        capture_output=True, text=True,
-    )
+    assert run_workflow(workflow_repo).returncode == 0
+    merge_release_pr(workflow_repo)
+    failed = run_workflow(workflow_repo, FAIL_CREATE="1")
     assert failed.returncode != 0
+    root, _, env = workflow_repo
     assert not Path(env["RELEASE_STATE"]).exists()
-    retry = subprocess.run(["bash", "-c", shell], cwd=root, env=env, capture_output=True, text=True)
+    retry = run_workflow(workflow_repo)
     assert retry.returncode == 0, retry.stderr
     assert Path(env["RELEASE_STATE"]).read_text() == "v0.1.6"
-    count = subprocess.check_output(["git", "rev-list", "--count", "HEAD"], cwd=root, text=True)
-    assert count.strip() == "2"
+    assert git(root, "rev-parse", "refs/tags/v0.1.6") == env["SOURCE_SHA"]
+
+
+def test_workflow_recovers_after_pr_creation_failure(workflow_repo):
+    failed = run_workflow(workflow_repo, FAIL_PR="1")
+    assert failed.returncode != 0
+    retry = run_workflow(workflow_repo)
+    assert retry.returncode == 0, retry.stderr
+    _, _, env = workflow_repo
+    assert Path(env["RELEASE_STATE"]).with_suffix('.pr').exists()
+    assert not Path(env["RELEASE_STATE"]).exists()
+
+
+def test_workflow_refreshes_release_pr_after_another_merge(workflow_repo):
+    assert run_workflow(workflow_repo).returncode == 0
+    root, _, env = workflow_repo
+    git(root, "checkout", "main")
+    git(root, "commit", "--allow-empty", "-m", "Another approved merge")
+    env["SOURCE_SHA"] = git(root, "rev-parse", "HEAD")
+    remote = git(root, "remote", "get-url", "origin")
+    git(root, f"--git-dir={remote}", "fetch", str(root), f"{env['SOURCE_SHA']}:refs/heads/main")
+    result = run_workflow(workflow_repo)
+    assert result.returncode == 0, result.stderr
+    assert Path(env["RELEASE_STATE"]).with_suffix('.edit').exists()
+    git(root, "fetch", "origin", "automation/release-v0.1.6")
+    assert git(root, "rev-parse", "FETCH_HEAD^") == env["SOURCE_SHA"]
+
+
+def test_workflow_rejects_conflicting_existing_tag(workflow_repo):
+    assert run_workflow(workflow_repo).returncode == 0
+    root, _, env = workflow_repo
+    git(root, "tag", "v0.1.6", env["SOURCE_SHA"])
+    merge_release_pr(workflow_repo)
+    result = run_workflow(workflow_repo)
+    assert result.returncode != 0
+    assert "already points to a different commit" in result.stdout
+    assert not Path(env["RELEASE_STATE"]).exists()
 
 
 @pytest.mark.parametrize("reason", ["direct_push", "newer_merge"])
 def test_workflow_skips_unqualified_or_stale_ci(workflow_repo, reason):
-    root, shell, env = workflow_repo
+    root, _, env = workflow_repo
     if reason == "direct_push":
         env["MERGED"] = "0"
     else:
-        subprocess.run(["git", "commit", "--allow-empty", "-m", "Newer merge"], cwd=root, check=True, capture_output=True)
-    result = subprocess.run(["bash", "-c", shell], cwd=root, env=env, capture_output=True, text=True)
+        git(root, "commit", "--allow-empty", "-m", "Newer merge")
+        remote = git(root, "remote", "get-url", "origin")
+        git(root, f"--git-dir={remote}", "fetch", str(root), f"{git(root, 'rev-parse', 'HEAD')}:refs/heads/main")
+    result = run_workflow(workflow_repo)
     assert result.returncode == 0, result.stderr
     assert not Path(env["RELEASE_STATE"]).exists()
-    assert not Path(env["GITHUB_OUTPUT"]).exists()
+    assert not Path(env["RELEASE_STATE"]).with_suffix('.pr').exists()
     assert tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"] == "0.1.5"

@@ -30,7 +30,7 @@ def release_notes(changelog: str, version: str) -> str:
 
 
 def prepare(root: Path, generated_notes: str, output: Path) -> str:
-    """Validate all files, then bump the patch and move unreleased notes into the release."""
+    """Bump the patch using pending notes or a prewritten numbered changelog entry."""
     project = root / "pyproject.toml"
     package = root / "src/longparser/__init__.py"
     lock = root / "uv.lock"
@@ -51,25 +51,45 @@ def prepare(root: Path, generated_notes: str, output: Path) -> str:
         ),
     }
     content = changelog.read_text()
-    if re.search(rf"^## \[{re.escape(version)}\]", content, re.MULTILINE):
-        raise ValueError(f"Changelog already contains {version}")
-    section = re.search(
+    numbered = list(re.finditer(
+        rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+        content, re.MULTILINE | re.DOTALL,
+    ))
+    unreleased = list(re.finditer(
         r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)",
-        content,
-        re.MULTILINE | re.DOTALL,
-    )
-    if not section:
-        raise ValueError("Missing [Unreleased] changelog section")
-    pending = section[1].strip().removesuffix("---").rstrip()
+        content, re.MULTILINE | re.DOTALL,
+    ))
+    if len(numbered) > 1 or len(unreleased) > 1:
+        raise ValueError("Duplicate changelog sections for the pending release")
+    if numbered and unreleased:
+        raise ValueError("Use either a numbered pending release or [Unreleased], not both")
+    section = next(iter(numbered or unreleased), None)
+    # After a numbered release, later merges can release generated notes without
+    # requiring a maintainer to add an Unreleased heading first.
+    first_release = re.search(r"^## \[\d+\.\d+\.\d+\]", content, re.MULTILINE)
+    if section is not None:
+        start, end = section.start(), section.end()
+    elif first_release is not None:
+        start = end = first_release.start()
+    else:
+        raise ValueError("Missing [Unreleased] or numbered changelog section")
+    pending = section[1].strip().removesuffix("---").rstrip() if section else ""
     notes = "\n\n".join(part for part in (pending, generated_notes.strip()) if part) + "\n"
     if not notes.strip():
         raise ValueError("Refusing to create a release with empty notes")
     today = datetime.now(UTC).date().isoformat()
-    updates[changelog] = (
-        content[:section.start()]
-        + f"## [Unreleased]\n\n## [{version}] — {today}\n\n{notes}\n---\n\n"
-        + content[section.end():]
-    )
+    if numbered:
+        # Keep the maintainer's version heading and date exactly as written.
+        updates[changelog] = content[:numbered[0].start(1)] + f"\n{notes}\n---\n\n" + content[end:]
+    else:
+        updates[changelog] = (
+            content[:start]
+            + f"## [Unreleased]\n\n## [{version}] — {today}\n\n{notes}\n---\n\n"
+            + content[end:]
+        )
+    docs_changelog = root / "docs/changelog.md"
+    if docs_changelog.is_file():
+        updates[docs_changelog] = updates[changelog]
     for path, updated in updates.items():
         path.write_text(updated)
     output.write_text(notes)
