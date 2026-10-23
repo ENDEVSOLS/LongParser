@@ -25,7 +25,7 @@ point and :mod:`longparser.server` for the REST API layer.
 
 from __future__ import annotations
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __author__ = "ENDEVSOLS Team"
 __license__ = "MIT"
 

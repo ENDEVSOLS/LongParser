@@ -36,6 +36,19 @@ This project follows [Semantic Versioning](https://semver.org/) and
 - Optional-backend installation errors now explicitly retain their original exception causes.
 - Vector insertion explicitly uses `zip(strict=False)` to preserve existing truncation behavior.
 
+<!-- Release notes generated using configuration in .github/release.yml at 4af9cf882038954451ba078a27f9592a6f8e3cdc -->
+
+## What's Changed
+### Other Changes
+* Strengthen LongParser reliability with comprehensive tests and targeted bug fixes by @Abdullahbinmushtaq in https://github.com/ENDEVSOLS/LongParser/pull/5
+* Improve parser reliability, expand test coverage, and automate releases by @Abdullahbinmushtaq in https://github.com/ENDEVSOLS/LongParser/pull/6
+* fix: release through pull requests and support versioned changelogs by @Abdullahbinmushtaq in https://github.com/ENDEVSOLS/LongParser/pull/7
+
+## New Contributors
+* @Abdullahbinmushtaq made their first contribution in https://github.com/ENDEVSOLS/LongParser/pull/5
+
+**Full Changelog**: https://github.com/ENDEVSOLS/LongParser/compare/v0.1.5...v0.1.6
+
 ---
 
 ## [0.1.5] — 2026-05-05
