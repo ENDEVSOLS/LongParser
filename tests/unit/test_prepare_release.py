@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -14,8 +15,8 @@ import yaml
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/prepare_release.py"
 
 
-@pytest.fixture
-def release_repo(tmp_path):
+@pytest.fixture(params=["unreleased", "numbered"])
+def release_repo(tmp_path, request):
     (tmp_path / "src/longparser").mkdir(parents=True)
     (tmp_path / "pyproject.toml").write_text('[project]\nname = "longparser"\nversion = "0.1.5"\n')
     (tmp_path / "src/longparser/__init__.py").write_text('__version__ = "0.1.5"\n')
@@ -24,7 +25,9 @@ def release_repo(tmp_path):
         '[[package]]\nname = "other"\nversion = "0.1.5"\n'
     )
     (tmp_path / "CHANGELOG.md").write_text(
-        "# Changelog\n\n## [Unreleased] — planned 0.1.6\n\n### Fixed\n\n"
+        "# Changelog\n\n"
+        + ("## [0.1.6] — 2026-10-01" if request.param == "numbered" else "## [Unreleased] — planned 0.1.6")
+        + "\n\n### Fixed\n\n"
         "- A bug.\n\n---\n\n## [0.1.5] — 2026-05-05\n\n- Previous release.\n"
     )
     (tmp_path / "docs").mkdir()
@@ -42,6 +45,7 @@ def run_release(root, *args):
 
 def test_patch_release_preserves_history_and_dependencies(release_repo):
     root = release_repo
+    numbered = "## [0.1.6] — 2026-10-01" in (root / "CHANGELOG.md").read_text()
     result = run_release(root, "--notes", "generated.md")
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "0.1.6"
@@ -51,7 +55,11 @@ def test_patch_release_preserves_history_and_dependencies(release_repo):
     assert [(p["name"], p["version"]) for p in packages] == [("longparser", "0.1.6"), ("other", "0.1.5")]
     changelog = (root / "CHANGELOG.md").read_text()
     assert (root / "docs/changelog.md").read_text() == changelog
-    assert "## [Unreleased]\n\n## [0.1.6]" in changelog
+    assert changelog.count("## [0.1.6]") == 1
+    if numbered:
+        assert "## [0.1.6] — 2026-10-01" in changelog
+    else:
+        assert "## [Unreleased]\n\n## [0.1.6]" in changelog
     assert "## [0.1.5] — 2026-05-05\n\n- Previous release.\n" in changelog
     notes = (root / "notes.md").read_text()
     assert "- A bug." in notes and "#12" in notes
@@ -68,6 +76,34 @@ def test_release_without_manual_changelog_entry(release_repo):
     assert "#12" in (release_repo / "notes.md").read_text()
 
 
+def test_next_release_after_numbered_changelog(release_repo):
+    changelog = release_repo / "CHANGELOG.md"
+    changelog.write_text(changelog.read_text().replace("## [Unreleased] — planned 0.1.6", "## [0.1.6] — 2026-10-01"))
+    assert run_release(release_repo, "--notes", "generated.md").returncode == 0
+    previous = changelog.read_text()
+    result = run_release(release_repo, "--notes", "generated.md")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "0.1.7"
+    assert changelog.read_text().endswith(previous[previous.index("## [0.1.6]"):])
+
+
+def test_repository_release_inputs(tmp_path):
+    """Catch post-merge release failures using the real checked-in release inputs."""
+    root = SCRIPT.parents[1]
+    for name in ("pyproject.toml", "src/longparser/__init__.py", "uv.lock", "CHANGELOG.md", "docs/changelog.md"):
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(root / name, target)
+    (tmp_path / "generated.md").write_text("## What's Changed\n* Release input validation\n")
+    result = run_release(tmp_path, "--notes", "generated.md")
+    assert result.returncode == 0, result.stderr
+    version = result.stdout.strip()
+    assert tomllib.loads((tmp_path / "pyproject.toml").read_text())["project"]["version"] == version
+    assert (tmp_path / "docs/changelog.md").read_text() == (tmp_path / "CHANGELOG.md").read_text()
+    retry = run_release(tmp_path, "--extract", version)
+    assert retry.returncode == 0, retry.stderr
+
+
 @pytest.mark.parametrize("broken", ["package", "lock", "changelog", "duplicate", "empty"])
 def test_invalid_release_leaves_all_files_unchanged(release_repo, broken):
     if broken == "package":
@@ -78,7 +114,7 @@ def test_invalid_release_leaves_all_files_unchanged(release_repo, broken):
         (release_repo / "CHANGELOG.md").write_text("# Changelog\n")
     elif broken == "duplicate":
         with (release_repo / "CHANGELOG.md").open("a") as file:
-            file.write("\n## [0.1.6]\nAlready released.\n")
+            file.write("\n## [0.1.6]\nDuplicate.\n\n## [0.1.6]\nDuplicate again.\n")
     else:
         (release_repo / "CHANGELOG.md").write_text("## [Unreleased]\n")
         (release_repo / "generated.md").write_text("")

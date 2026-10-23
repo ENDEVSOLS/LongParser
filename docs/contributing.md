@@ -113,8 +113,11 @@ metadata, runtime version, and lockfile, and updates both changelog copies.
 Do not bump these files manually for routine PRs.
 
 Release notes combine any `[Unreleased]` entries with GitHub's generated PR
-notes. PRs without category labels appear under Other Changes. Keep the
-`[Unreleased]` heading; the release job moves its contents into a dated entry.
+notes. Alternatively, write the next patch version's numbered entry in advance;
+the workflow preserves its heading and date and adds the generated notes there.
+Use one format for the pending release. When neither entry exists, generated
+notes create a new section above the previous numbered release.
+PRs without category labels appear under Other Changes.
 If more PRs merge before the version-update PR is approved, the workflow refreshes
 that same automation branch and PR. Its checks and approvals must pass again as
 required by repository policy.
