@@ -11,7 +11,7 @@ when you explicitly install them and select them in your configuration.
 | Package | License | Install Command | When Loaded |
 |---------|---------|-----------------|-------------|
 | `pymupdf4llm` | AGPL-3.0 or Artifex Commercial | `pip install "longparser[pymupdf]"` | Only when you set `backend="pymupdf"` |
-| `marker-pdf` | GPL-3.0-or-later | `pip install "longparser[marker]"` | Only when you set `backend="marker"` *(future)* |
+| `marker-pdf` | GPL-3.0-or-later | `pip install "longparser[marker]"` | Only when you set `backend="marker"` |
 | `surya-ocr` | GPL-3.0-or-later | `pip install "longparser[surya]"` | Only when explicitly imported *(future)* |
 
 ## Core Dependency Licenses (always installed)
@@ -33,7 +33,7 @@ when you explicitly install them and select them in your configuration.
   OR purchase a commercial license from [Artifex](https://artifex.com).
   LongParser core code remains MIT.
 
-- **If you install `longparser[marker]`** *(future)* — the `marker-pdf` library
+- **If you install `longparser[marker]`** — the `marker-pdf` library
   is GPL-3.0 licensed. You must comply with GPL terms for the Marker component.
   LongParser core code remains MIT.
 

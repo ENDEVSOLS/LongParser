@@ -171,8 +171,8 @@ class TestLicenseSafety:
             f"Defaulting to a GPL/AGPL backend would violate MIT license."
         )
 
-    def test_pymupdf_extractor_not_in_extractors_init(self):
-        """PyMuPDFExtractor must NOT be exported from extractors/__init__.py."""
+    def test_isolated_extractors_not_in_extractors_init(self):
+        """PyMuPDFExtractor and MarkerExtractor must NOT be exported from extractors/__init__.py."""
         from longparser import extractors
 
         public_names = getattr(extractors, "__all__", dir(extractors))
@@ -180,4 +180,8 @@ class TestLicenseSafety:
         assert "PyMuPDFExtractor" not in public_names, (
             "PyMuPDFExtractor must NOT be in extractors/__init__.py. "
             "It must only be imported lazily when backend='pymupdf' is set."
+        )
+        assert "MarkerExtractor" not in public_names, (
+            "MarkerExtractor must NOT be in extractors/__init__.py. "
+            "It must only be imported lazily when backend='marker' is set."
         )

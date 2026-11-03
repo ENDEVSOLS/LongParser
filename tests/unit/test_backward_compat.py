@@ -133,11 +133,13 @@ class TestPublicAPICompat:
         )
 
     def test_lazy_imports_still_work(self):
-        """Lazy imports from v0.1.3 must still resolve."""
+        """Lazy imports must still resolve."""
         from longparser import (
             DoclingExtractor,  # noqa: F401
             DocumentPipeline,  # noqa: F401
             HybridChunker,  # noqa: F401
+            MarkerExtractor,  # noqa: F401
             PipelineOrchestrator,  # noqa: F401
             PipelineResult,  # noqa: F401
+            PyMuPDFExtractor,  # noqa: F401
         )

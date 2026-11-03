@@ -193,7 +193,7 @@ Document → Extract → Validate → HITL Review → Chunk → Embed → Index
 ```
 src/longparser/
 ├── schemas.py           ← core Pydantic models (Document, Block, Chunk, …)
-├── extractors/          ← Docling, LaTeX OCR backends
+├── extractors/          ← Docling, PyMuPDF, Marker, LaTeX OCR backends
 ├── chunkers/            ← HybridChunker
 ├── pipeline/            ← DocumentPipeline
 ├── integrations/        ← LangChain loader & LlamaIndex reader

@@ -25,7 +25,7 @@ point and :mod:`longparser.server` for the REST API layer.
 
 from __future__ import annotations
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 __author__ = "ENDEVSOLS Team"
 __license__ = "MIT"
 
@@ -64,6 +64,10 @@ def __getattr__(name: str):
         # AGPL-isolated — only loaded when explicitly requested
         from .extractors.pymupdf_extractor import PyMuPDFExtractor
         return PyMuPDFExtractor
+    if name == "MarkerExtractor":
+        # GPL-isolated — only loaded when explicitly requested
+        from .extractors.marker_extractor import MarkerExtractor
+        return MarkerExtractor
     if name == "PipelineOrchestrator":
         from .pipeline import PipelineOrchestrator
         return PipelineOrchestrator
@@ -107,6 +111,7 @@ __all__ = [
     # Lazily imported (require extras)
     "DoclingExtractor",
     "PyMuPDFExtractor",
+    "MarkerExtractor",
     "PipelineOrchestrator",
     "DocumentPipeline",
     "PipelineResult",

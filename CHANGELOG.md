@@ -5,6 +5,23 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] — 2026-11-03
+
+### Added
+
+- **Trustworthy Core:** Comprehensive test coverage suite exceeding 95% total code coverage across all core modules (`extractors`, `chunkers`, `pipeline`, `server`).
+- **Marker Backend Support:** Added `MarkerExtractor` to the top-level lazy import shim (`from longparser import MarkerExtractor`) with full GPL-3.0 isolation and license safety verification.
+- **Committed Roadmap:** Added `ROADMAP.md` formalizing Phase 1 completion, the v0.2.0 hardening release, and future milestone boundaries.
+
+### Changed
+
+- Transitioned release management from automated bot PR workflows to maintainer-controlled releases.
+- Enforced full configured Ruff lint rules across the entire repository.
+- Raised whole-production code coverage threshold to 95.0%.
+- Updated third-party licensing documentation to reflect active support for the optional `marker-pdf` backend.
+
+---
+
 ## [0.1.6] — 2026-10-01
 
 ### Added
