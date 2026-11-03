@@ -44,8 +44,8 @@ jobs:
           python-version: "3.12"
           enable-cache: true
 
-      - name: Sync dev dependencies
-        run: uv sync --extra dev
+      - name: Sync dev and server dependencies
+        run: uv sync --extra dev --extra server
 
       - name: Run tests before publishing
         run: uv run pytest tests/unit/ -v --tb=short
