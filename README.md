@@ -29,13 +29,19 @@
   </p>
 </p>
 
-Act like a best analyser
-Analyze this requirement file deeply , We want to give full analysis of this requirements file in simple term .Explain all requirements  that is easily understandable .
-Also give what previous and after new changes and its effect  .Make a table of it.
-Make .md file professionally ,clear with proper formatting.Act like a best analyser
-Analyze this requirement file deeply , We want to give full analysis of this requirements file in simple term .Explain all requirements  that is easily understandable .
-Also give what previous and after new changes and its effect  .Make a table of it.
-Make .md file professionally ,clear with proper formatting.---
+## What is LongParser?
+
+**LongParser** is an open-source Python library that turns complex documents into clean, structured data that AI systems can use. It reads PDF, DOCX, PPTX, XLSX and CSV files, preserves their structure (headings, tables, equations, page references), and splits them into chunks ready for search and Retrieval-Augmented Generation (RAG).
+
+Most document parsers stop at extracting text. LongParser also covers the steps that follow:
+
+1. **Extract:** read the document with Docling (the default), or with the optional PyMuPDF or Marker backends.
+2. **Validate:** score chunk quality and redact personal data (PII).
+3. **Review:** let a human approve or edit blocks and chunks before they are indexed (HITL review).
+4. **Chunk:** split the content by token budget, heading hierarchy and table boundaries, with optional semantic boundaries.
+5. **Embed and index:** store chunks in Chroma, FAISS or Qdrant, and query them through a built-in chat engine.
+
+---
 
 ## Features
 
