@@ -104,47 +104,20 @@ All new features **must** include unit tests. PRs without tests will not be merg
 
 ---
 
-## Automatic Releases
+## Releases (Owner-Managed)
 
-Releases respect the review and status-check rules on `main`. After a normal PR
-merges and CI passes, the workflow opens a version-update PR from
-`automation/release-vX.Y.Z`. It increments the patch version in the package
-metadata, runtime version, and lockfile, and updates both changelog copies.
-Do not bump these files manually for routine PRs.
+Releases are managed directly by project maintainers:
 
-Release notes combine any `[Unreleased]` entries with GitHub's generated PR
-notes. Alternatively, write the next patch version's numbered entry in advance;
-the workflow preserves its heading and date and adds the generated notes there.
-Use one format for the pending release. When neither entry exists, generated
-notes create a new section above the previous numbered release.
-PRs without category labels appear under Other Changes.
-If more PRs merge before the version-update PR is approved, the workflow refreshes
-that same automation branch and PR. Its checks and approvals must pass again as
-required by repository policy.
+1. **Version Update:**
+   - Update `version` in `pyproject.toml` and `__version__` in `src/longparser/__init__.py`.
+   - Update `uv.lock` by running `uv lock`.
+   - Document changes in `CHANGELOG.md` and `docs/changelog.md` under the release version heading.
+   - Commit and merge the changes into `main` after CI checks pass.
 
-Review and merge the version-update PR. After CI passes on its merged commit,
-the workflow tags that exact commit, creates the GitHub release, and dispatches
-PyPI publishing at the tag. It never pushes a commit directly to `main`.
-A direct push to `main` does not prepare or publish a release.
-
-### Repository setup
-
-In **Settings → Actions → General → Workflow permissions**, enable **Allow GitHub
-Actions to create and approve pull requests**. An organization administrator may
-need to allow this setting first. The workflow only creates/updates PRs; human
-review and the repository's merge rules still apply. No bypass or personal token
-is required.
-
-The workflow explicitly dispatches CI and license checks on its automation branch,
-because bot pushes do not start regular push workflows with `GITHUB_TOKEN`.
-Keep the existing `pypi` environment and trusted publisher for `publish.yml`.
-Publishing runs separately in Actions under **Publish to PyPI**; the CI release
-job confirms dispatch, while that publishing run confirms the upload.
-
-Rerun failed CI jobs to retry PR creation or release creation without incrementing
-the version twice. A publishing failure can be retried from **Publish to PyPI**.
-An existing version tag must point to the exact tested merge commit; the workflow
-fails rather than moving a conflicting tag.
+2. **Publishing to PyPI:**
+   - Create and publish a GitHub Release with tag `vX.Y.Z` (e.g., `v0.1.6`) from `main`.
+   - The `.github/workflows/publish.yml` workflow automatically triggers when the release is published, running the test suite, building the distribution, and publishing to PyPI using PyPA Trusted Publishing.
+   - Alternatively, maintainers can trigger the `Publish to PyPI` workflow manually via GitHub Actions **Run workflow** (`workflow_dispatch`) to test on `testpypi` or publish to `pypi`.
 
 ## Reporting Issues
 
