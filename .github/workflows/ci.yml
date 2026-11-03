@@ -59,11 +59,3 @@ jobs:
       - run: python -m build
       - run: twine check dist/*
 
-  release:
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-    uses: ./.github/workflows/auto-tag.yml

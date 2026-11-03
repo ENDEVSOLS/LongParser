@@ -5,7 +5,7 @@ All notable changes to **LongParser** are documented here.
 This project follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — planned 0.1.6
+## [0.1.6] — 2026-10-01
 
 ### Added
 

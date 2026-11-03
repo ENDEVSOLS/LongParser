@@ -22,7 +22,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--expected-version", default="0.1.5")
+    parser.add_argument("--expected-version", default="0.1.6")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     os.environ["HF_HUB_OFFLINE"] = "1"
